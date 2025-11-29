@@ -8,9 +8,9 @@ export default function UrlInput() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      
       const res = await fetch(url);
       const data = await res.text();
+      
       await new Promise(resolve => setTimeout(resolve, 10000));
       setResponse(data);
     } catch (error) {
@@ -27,12 +27,14 @@ export default function UrlInput() {
         value={url}
         onChange={(e) => setUrl(e.target.value)}
         placeholder="https://example.com"
-        className={`w-full rounded-lg transition ${
+        className={`w-full px-4 py-3 rounded-lg transition outline-none ${
           loading 
-            ? 'animate-border-progress' 
-            : 'border-2 border-gray-300 px-4 py-3 focus:border-blue-500'
+            ? 'border-2 animate-ring-pulse'
+            : 'border-2 border-gray-300 ring-static focus:border-green-400'
         }`}
       />
+
+      <br />
       
       <button 
         onClick={handleSubmit}

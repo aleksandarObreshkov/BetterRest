@@ -9,44 +9,21 @@ body {
   padding: 2rem;
 }
 
-@keyframes border-progress-complete {
-  /* px % -> vertical line; px=width, % -> height to be filled */
-   /* % px -> horizontal line; % -> % of the width to be filled, px -> height */
-  0% {
-    background-size: 3px 0%, 3px 0%, 0% 3px, 0% 3px, 3px 0%, 3px 0%; 
-  }
-  25% {
-    background-size: 3px 100%, 3px 100%, 0% 3px, 0% 3px, 3px 0%, 3px 0%;
-  }
+@keyframes ring-pulse {
   50% {
-    background-size: 3px 100%, 3px 100%, 100% 3px, 100% 3px, 3px 0%, 3px 0%;
+    box-shadow: 0 0 0 2px #05df72;
   }
-  75% {
-    background-size: 3px 100%, 3px 100%, 100% 3px, 100% 3px, 3px 50%, 3px 50%;
-  }
-  100% {
-    background-size: 3px 100%, 3px 100%, 100% 3px, 100% 3px, 3px 50%, 3px 50%;
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(253, 254, 253, 0.938);
   }
 }
 
-.animate-border-progress {
-  background-image: 
-    linear-gradient(to top, #3b82f6 100%, transparent 0),      /* Left border going UP */
-    linear-gradient(to bottom, #3b82f6 100%, transparent 0),   /* Left border going DOWN */
-    linear-gradient(to right, #3b82f6 100%, transparent 0),    /* Top border going RIGHT */
-    linear-gradient(to right, #3b82f6 100%, transparent 0),    /* Bottom border going RIGHT */
-    linear-gradient(to bottom, #3b82f6 100%, transparent 0),      /* Right border going DOWN */
-    linear-gradient(to top, #3b82f6 100%, transparent 0);   /* Right border going UP */
-  background-position: 
-    left center,      /* Left-up starts middle left */
-    left center,      /* Left-down starts middle left */
-    left top,      /* Top line starts top-left */
-    left bottom,   /* Bottom line starts bottom-left */
-    right top,     /* Right-down starts top right */
-    right bottom;     /* Right-up starts bottom right */
-  background-repeat: no-repeat;
-  background-size: 3px 0%, 3px 0%, 0% 3px, 0% 3px, 3px 0%, 3px 0%;
-  animation: border-progress-complete 2s linear infinite;
-  padding: 12px 16px;
+.animate-ring-pulse {
+  animation: ring-pulse 1.5s ease-in-out infinite;
+  border: 2px solid #05df72;
+}
+
+.ring-static {
+  box-shadow: 0 0 0 2px transparent; /* Reserves space but invisible */
 }
 
