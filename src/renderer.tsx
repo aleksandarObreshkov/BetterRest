@@ -1,5 +1,9 @@
+import './index.css';
+import App from './App';
+import { createRoot } from 'react-dom/client';
+
 export interface IElectronAPI {
-  test: () => string;
+  executeRequest: (requestParameters: Map<string, string>, url: string) => any
 }
 
 declare global {
@@ -7,11 +11,6 @@ declare global {
     api: IElectronAPI;
   }
 }
-
-import './index.css';
-import App from './App';
-import { createRoot } from 'react-dom/client';
-
 
 // Mount React to the DOM
 const rootElement = document.getElementById('root');

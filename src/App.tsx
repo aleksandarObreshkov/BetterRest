@@ -1,10 +1,10 @@
 import React from 'react';
-import Url from './components/Url';
+import RequestView from './components/RequestView';
 
 export default function App() {
   return (
     <div>
-        <Url/>
+        <RequestView/>
     </div>
   );
 }

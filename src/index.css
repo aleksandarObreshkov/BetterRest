@@ -18,6 +18,10 @@ body {
   }
 }
 
+.margin-small {
+  margin: 2px
+}
+
 .animate-ring-pulse {
   animation: ring-pulse 1.5s ease-in-out infinite;
   border: 2px solid #05df72;

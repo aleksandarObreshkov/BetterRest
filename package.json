@@ -49,7 +49,10 @@
     "typescript": "~4.5.4"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.9",
+    "@heroicons/react": "^2.2.0",
     "@tailwindcss/postcss": "^4.1.17",
+    "@tailwindplus/elements": "^1.0.19",
     "electron-squirrel-startup": "^1.0.1"
   }
 }
