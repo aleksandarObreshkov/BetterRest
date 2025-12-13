@@ -1,0 +1,8 @@
+@reference "tailwindcss";
+
+.submitButton {
+    @apply flex-none bg-blue-500 text-white px-4 py-2 rounded-lg
+            shadow-md active:shadow-sm active:scale-95 active:bg-blue-600 
+            transition-all duration-100;
+    margin: 2px
+}

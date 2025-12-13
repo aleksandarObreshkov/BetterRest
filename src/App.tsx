@@ -1,9 +1,8 @@
-import React from 'react';
 import RequestView from './components/RequestView';
 
 export default function App() {
   return (
-    <div>
+    <div className='w-full h-full'>
         <RequestView/>
     </div>
   );

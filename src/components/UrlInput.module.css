@@ -1,0 +1,35 @@
+@reference "tailwindcss";
+
+@keyframes ring-pulse {
+  50% {
+    box-shadow: 0 0 0 2px #155dfc;
+  }
+  0%, 100% {
+    box-shadow: 0 0 0 2px rgba(253, 254, 253, 0.938);
+  }
+}
+
+.animate-ring-pulse {
+  animation: ring-pulse 1.5s ease-in-out infinite;
+  border: 2px solid #155dfc;
+}
+
+.ring-static {
+  box-shadow: 0 0 0 2px transparent; /* Reserves space but invisible */
+}
+
+.urlInputBase {
+    @apply flex-2 w-full px-4 py-3 rounded-lg transition outline-none;
+    margin: 2px
+}
+
+.urlInputLoading {
+    composes: animate-ring-pulse;
+    @apply border-2
+}
+
+.urlInputNotLoading {
+    composes: ring-static;
+    @apply border-2 border-gray-300 focus:border-blue-400
+}
+

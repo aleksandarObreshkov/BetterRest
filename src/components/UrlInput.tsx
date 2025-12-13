@@ -1,3 +1,5 @@
+import styles from "./UrlInput.module.css"
+
 interface UrlInputProps {
   url: string;
   setUrl: (url: string) => void;
@@ -13,10 +15,10 @@ export default function UrlInput({url, setUrl, loading}: UrlInputProps) {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://example.com"
-          className={`flex-2 margin-small w-full px-4 py-3 rounded-lg transition outline-none ${
+          className={`${styles.urlInputBase} ${
             loading 
-              ? 'border-2 animate-ring-pulse'
-              : 'border-2 border-gray-300 ring-static focus:border-green-400'
+              ? styles.urlInputLoading
+              : styles.urlInputNotLoading
           }`}
         />
     )

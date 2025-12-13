@@ -28,12 +28,12 @@ export default function RequestView() {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6">
+    <div className="w-full p-6">
       <div className='flex'>
         <RequestMethod value={method} onChange={setMethod} />
         <UrlInput url={url} setUrl={setUrl} loading={loading}></UrlInput>
         <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
-        </div>
+      </div>
         <ResponseView response={response}></ResponseView>
     </div>
   );

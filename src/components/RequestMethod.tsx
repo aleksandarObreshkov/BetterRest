@@ -1,3 +1,5 @@
+import styles from './RequestMethod.module.css';
+
 const methods = ["GET", "POST", "PUT", "PATCH", "DELETE"]; 
 
 type Props = {
@@ -8,7 +10,7 @@ type Props = {
 export default function RequestMethod({ value, onChange }: Props) {
   return (
     <select
-      className="border rounded px-2 py-1 bg-white"
+      className={`${styles.requestMethod}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
     >
