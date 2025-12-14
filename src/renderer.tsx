@@ -3,7 +3,7 @@ import App from './App';
 import { createRoot } from 'react-dom/client';
 
 export interface IElectronAPI {
-  executeRequest: (requestParameters: Map<string, string>, url: string) => any
+  executeRequest: (requestParameters: Map<string, string>, url: string, requestHeaders: Map<string, string>) => any
 }
 
 declare global {

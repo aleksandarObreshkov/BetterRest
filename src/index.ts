@@ -7,10 +7,13 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-ipcMain.handle("request", async (_, parameters: Map<string, string>, url: string) => {
+ipcMain.handle("request", async (_, parameters: Map<string, string>, url: string, requestHeaders: Map<string, string>) => {
     const requestMethod = parameters.get("method")
+    const headers = new Headers()
+    requestHeaders.forEach((k,v) => headers.append(k, v))
     const result = await fetch(url, {
-      method: requestMethod
+      method: requestMethod, 
+      headers: headers
     })
 
     const body = await result.text()
