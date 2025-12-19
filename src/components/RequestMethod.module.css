@@ -1,6 +1,10 @@
 @reference "tailwindcss";
 
-.requestMethod {
-    @apply border rounded px-2 py-1 bg-blue-500;
+.requestMethodRoot {
+    @apply border rounded-lg px-2 py-1 bg-blue-200;
     margin: 2px
+}
+
+.requestMethodOption {
+    @apply bg-blue-200
 }

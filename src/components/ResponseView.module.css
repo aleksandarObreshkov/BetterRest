@@ -1,0 +1,6 @@
+@reference "tailwindcss";
+
+.response {
+    @apply flex flex-2 h-full w-full mt-4 p-4 bg-gray-100 border rounded-lg border-blue-500;
+    margin: 2px;
+}

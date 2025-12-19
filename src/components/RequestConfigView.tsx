@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, X } from 'lucide-react';
+import styles from './RequestConfigView.module.css'
 
 interface RequestConfigProperties {
     headers: RequestHeader[]
@@ -54,7 +55,7 @@ const RequestConfigView = ({headers, setHeaders}: RequestConfigProperties) => {
   ];
 
   return (
-    <div className="flex flex-2 flex-col h-full bg-white border-blue-500">
+    <div className={`${styles.rootConfig}`}>
       {/* Tabs */}
       <div className="flex border-b border-gray-200">
         {tabs.map(tab => (

@@ -1,0 +1,6 @@
+@reference "tailwindcss";
+
+.rootConfig {
+    @apply flex flex-2 flex-col h-full bg-white border rounded-lg border-blue-500;
+    margin: 2px
+}
