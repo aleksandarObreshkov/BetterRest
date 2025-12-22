@@ -3,7 +3,7 @@ import RequestMethod from './RequestMethod';
 import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
 import ResponseView from './ResponseView';
-import RequestConfigView, {RequestHeader} from './RequestConfigView'
+import RequestConfigView, {RequestHeader} from './requestConfigView/RequestConfigView'
 
 export default function RequestView() {
   const [response, setResponse] = useState('');

@@ -1,23 +1,10 @@
-import React, { useState } from 'react';
+import { RequestConfigProperties } from './RequestConfigView'
 import { Plus, X } from 'lucide-react';
-import styles from './RequestConfigView.module.css'
 
-interface RequestConfigProperties {
-    headers: RequestHeader[]
-    setHeaders: (headers: RequestHeader[]) => void
-}
 
-export interface RequestHeader {
-    id: number,
-    key: string,
-    value: string,
-    enabled: boolean
-}
+export function HeadersView({headers, setHeaders}: RequestConfigProperties) {
 
-const RequestConfigView = ({headers, setHeaders}: RequestConfigProperties) => {
-  const [activeTab, setActiveTab] = useState('headers');
-
-  const addHeader = () => {
+const addHeader = () => {
     const newId = Math.max(...headers.map(h => h.id), 0) + 1;
     setHeaders([...headers, { id: newId, key: '', value: '', enabled: true }]);
   };
@@ -50,112 +37,87 @@ const RequestConfigView = ({headers, setHeaders}: RequestConfigProperties) => {
       }, {});
   };
 
-  const tabs = [
-    { id: 'headers', label: 'Headers' }
-  ];
-
-  return (
-    <div className={`${styles.rootConfig}`}>
-      {/* Tabs */}
-      <div className="flex border-b border-gray-200">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? 'text-blue-600 border-b-2 border-blue-600'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="flex-1 overflow-auto p-4">
-        {activeTab === 'headers' && (
-          <div className="space-y-2">
+    return (
+    <div className="space-y-2 w-full">
+    <div className="flex-1 overflow-auto p-4">
+        {(
+        <div className="space-y-2">
             {/* Header Row */}
             <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
-              <div className="col-span-1"></div>
-              <div className="col-span-5">Key</div>
-              <div className="col-span-5">Value</div>
-              <div className="col-span-1"></div>
+            <div className="col-span-1"></div>
+            <div className="col-span-5">Key</div>
+            <div className="col-span-5">Value</div>
+            <div className="col-span-1"></div>
             </div>
 
-            {/* Header Inputs */}
             {headers.map((header) => (
-              <div key={header.id} className="grid grid-cols-12 gap-2 items-center">
-                {/* Checkbox */}
+            <div key={header.id} className="grid grid-cols-12 gap-2 items-center">
+
                 <div className="col-span-1 flex justify-center">
-                  <input
+                <input
                     type="checkbox"
                     checked={header.enabled}
                     onChange={() => toggleHeader(header.id)}
                     className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                  />
+                />
                 </div>
 
-                {/* Key Input */}
+
                 <div className="col-span-5">
-                  <input
+                <input
                     type="text"
                     value={header.key}
                     onChange={(e) => updateHeader(header.id, 'key', e.target.value)}
                     placeholder="Header name"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                />
                 </div>
 
-                {/* Value Input */}
+
                 <div className="col-span-5">
-                  <input
+                <input
                     type="text"
                     value={header.value}
                     onChange={(e) => updateHeader(header.id, 'value', e.target.value)}
                     placeholder="Header value"
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                />
                 </div>
 
-                {/* Delete Button */}
+
                 <div className="col-span-1 flex justify-center">
-                  <button
+                <button
                     onClick={() => removeHeader(header.id)}
                     disabled={headers.length === 1}
                     className={`p-1 rounded hover:bg-gray-100 transition-colors ${
-                      headers.length === 1 ? 'opacity-30 cursor-not-allowed' : ''
+                    headers.length === 1 ? 'opacity-30 cursor-not-allowed' : ''
                     }`}
-                  >
+                >
                     <X className="w-4 h-4 text-gray-500" />
-                  </button>
+                </button>
                 </div>
-              </div>
+            </div>
             ))}
 
             {/* Add Header Button */}
             <button
-              onClick={addHeader}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            onClick={addHeader}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
             >
-              <Plus className="w-4 h-4" />
-              Add Header
+            <Plus className="w-4 h-4" />
+            Add Header
             </button>
 
             {/* Preview Section */}
             <div className="mt-6 pt-4 border-t border-gray-200">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Active Headers Preview</h3>
-              <pre className="p-3 bg-gray-50 rounded text-xs font-mono overflow-x-auto">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Active Headers Preview</h3>
+            <pre className="p-3 bg-gray-50 rounded text-xs font-mono overflow-x-auto">
                 {JSON.stringify(getActiveHeaders(), null, 2)}
-              </pre>
+            </pre>
             </div>
-          </div>
+        </div>
         )}
-      </div>
     </div>
-  );
-};
-
-export default RequestConfigView;
+    </div>
+);
+}
