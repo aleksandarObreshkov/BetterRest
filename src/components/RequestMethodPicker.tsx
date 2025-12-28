@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from './RequestMethod.module.css'
-
-const methods = ["GET", "POST", "PUT", "PATCH", "DELETE"];
+import { HttpMethodHelpers } from '../models/HttpMethod';
 
 type Props = {
   value: string;
   onChange: (v: string) => void;
 };
 
-export default function RequestMethod({ value, onChange }: Props) {
+const httpMethods = HttpMethodHelpers.getAllValues()
+
+export default function RequestMethodPicker({ value, onChange }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -44,12 +45,12 @@ export default function RequestMethod({ value, onChange }: Props) {
 
       {isOpen && (
         <div className={`${styles.requestMethodChoice}`}>
-          {methods.map((method, index) => (
+          {httpMethods.map((method, index) => (
             <div
               key={method}
               className={`px-2 py-1 cursor-pointer hover:bg-blue-100 ${
-                method === value ? 'bg-blue-200' : 'bg-white'
-              } ${index === methods.length - 1 ? 'rounded-b-lg' : ''}`}
+                HttpMethodHelpers.stringEquals(method, value) ? 'bg-blue-200' : 'bg-white'
+              } ${index === httpMethods.length - 1 ? 'rounded-b-lg' : ''}`}
               onClick={() => handleSelect(method)}
             >
               {method}

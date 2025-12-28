@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import RequestMethod from './RequestMethod';
+import RequestMethodPicker from './RequestMethodPicker';
 import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
 import ResponseView from './ResponseView';
@@ -44,7 +44,7 @@ export default function RequestView() {
   return (
     <div className="w-full p-6 flex flex-col gap-4">
       <div className='flex'>
-        <RequestMethod value={method} onChange={setMethod} />
+        <RequestMethodPicker value={method} onChange={setMethod} />
         <UrlInput url={url} setUrl={setUrl} loading={loading}></UrlInput>
         <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
       </div>
