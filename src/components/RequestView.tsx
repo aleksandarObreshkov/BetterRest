@@ -4,6 +4,8 @@ import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
 import ResponseView from './ResponseView';
 import RequestConfigView, {RequestHeader} from './requestConfigView/RequestConfigView'
+import { Request } from '../models/Request';
+import { HttpMethod } from '../models/HttpMethod';
 
 export default function RequestView() {
   const [response, setResponse] = useState('');
@@ -14,11 +16,12 @@ export default function RequestView() {
 
   const handleSubmit = async () => {
     setLoading(true);
-    let map = new Map<string, string>()
-    map.set('method', method)
     try {
       const requestHeaders = formRequestHeaders()
-      const response = await window.api.executeRequest(map, url, requestHeaders)
+      let request = new Request(url, method as HttpMethod, requestHeaders)
+      let requestJson = request.toJSON()
+    
+      const response = await window.api.executeRequest(requestJson)
       console.log(response.body)
     
       await new Promise(resolve => setTimeout(resolve, 3000));

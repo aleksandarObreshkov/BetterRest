@@ -2,6 +2,7 @@ import { RequestConfigProperties } from './RequestConfigView'
 
 import React, { useState, useEffect } from 'react';
 import { Copy, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { ClientCredentialsAuthentication } from '../../models/Authentication';
 
 interface AuthenticationViewProps {
   headers: Array<{ id: number; key: string; value: string; enabled: boolean }>;
@@ -31,77 +32,22 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Check token expiration every second
-  useEffect(() => {
-    if (!tokenState) return;
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      if (now >= tokenState.expiresAt && !tokenState.isExpired) {
-        setTokenState(prev => prev ? { ...prev, isExpired: true } : null);
-        // Auto-refetch if credentials are available
-        if (tokenUrl && clientId && clientSecret) {
-          fetchToken();
-        }
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [tokenState, tokenUrl, clientId, clientSecret]);
-
-  const fetchToken = async () => {
-    setIsLoading(true);
-    setError(null);
-
+  async function triggerTokenFetch() {
+    const authRequest = new ClientCredentialsAuthentication()
+    authRequest.clientId = clientId
+    authRequest.clientSecret = clientSecret
+    authRequest.oauthUrl = tokenUrl
+    let authRequestJson = JSON.stringify(authRequest)
+    
     try {
-      // Validate inputs
-      if (!tokenUrl || !clientId || !clientSecret) {
-        throw new Error('Token URL, Client ID, and Client Secret are required');
-      }
-
-      // Prepare request body
-      const body = new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: clientId,
-        client_secret: clientSecret,
-      });
-
-      if (scope) {
-        body.append('scope', scope);
-      }
-
-      // Make token request
-      const response = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: body.toString(),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-          errorData.error_description || 
-          errorData.error || 
-          `HTTP ${response.status}: ${response.statusText}`
-        );
-      }
-
-      const data: TokenResponse = await response.json();
-
-      if (!data.access_token) {
-        throw new Error('No access token received from server');
-      }
-
-      // Calculate expiration time (subtract 60 seconds as buffer)
-      const expiresIn = (data.expires_in || 3600) - 60;
-      const expiresAt = Date.now() + (expiresIn * 1000);
+      let token: TokenState = await window.api.fetchToken(authRequestJson)
+      setIsLoading(true)
+      setError(null)
 
       setTokenState({
-        token: data.access_token,
-        expiresAt,
-        isExpired: false,
+        token: token.token,
+        expiresAt: token.expiresAt,
+        isExpired: token.isExpired,
       });
 
       // Update headers - remove any existing Authorization header and add new one
@@ -113,18 +59,34 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
         {
           id: maxId + 1,
           key: 'Authorization',
-          value: `Bearer ${data.access_token}`,
+          value: `Bearer ${token.token}`,
           enabled: true,
         },
       ]);
-
-    } catch (err) {
+    } catch(err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch token');
-      setTokenState(null);
-    } finally {
-      setIsLoading(false);
+      setTokenState(null)
     }
-  };
+    setIsLoading(false)
+  }
+
+  // Check token expiration every second
+  useEffect(() => {
+    if (!tokenState) return;
+
+    const interval = setInterval(async () => {
+      const now = Date.now();
+      if (now >= tokenState.expiresAt && !tokenState.isExpired) {
+        setTokenState(prev => prev ? { ...prev, isExpired: true } : null);
+        // Auto-refetch if credentials are available
+        if (tokenUrl && clientId && clientSecret) {
+          return triggerTokenFetch()
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [tokenState, tokenUrl, clientId, clientSecret]);
 
   const copyToken = () => {
     if (tokenState?.token) {
@@ -211,7 +173,7 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
 
         {/* Get Token Button */}
         <button
-          onClick={fetchToken}
+          onClick={triggerTokenFetch}
           disabled={isLoading || !tokenUrl || !clientId || !clientSecret}
           className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
         >

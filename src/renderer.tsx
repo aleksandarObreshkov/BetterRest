@@ -3,7 +3,8 @@ import App from './App';
 import { createRoot } from 'react-dom/client';
 
 export interface IElectronAPI {
-  executeRequest: (requestParameters: Map<string, string>, url: string, requestHeaders: Map<string, string>) => any
+  executeRequest: (request: any) => any,
+  fetchToken: (authRequest: any) => any
 }
 
 declare global {

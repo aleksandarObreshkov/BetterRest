@@ -1,4 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { fetchToken, handleHttpRequest } from './requestHandler';
+import { Request } from './models/Request';
+import { ClientCredentialsAuthentication } from './models/Authentication';
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -7,21 +10,15 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-ipcMain.handle("request", async (_, parameters: Map<string, string>, url: string, requestHeaders: Map<string, string>) => {
-    const requestMethod = parameters.get("method")
-    const headers = new Headers()
-    requestHeaders.forEach((k,v) => headers.append(k, v))
-    const result = await fetch(url, {
-      method: requestMethod, 
-      headers: headers
-    })
+ipcMain.handle("request", async (_, requestJson: any) => {
+  const request = Request.fromJSON(requestJson)
+  return await handleHttpRequest(request)
+})
 
-    const body = await result.text()
-
-    return {
-      body: body, 
-      status: result.status
-    }
+ipcMain.handle("authRequest", async (_, requestJson: any) => {
+  
+  const authRequest = ClientCredentialsAuthentication.fromJSON(requestJson)
+  return await fetchToken(authRequest)
 })
 
 const createWindow = (): void => {
