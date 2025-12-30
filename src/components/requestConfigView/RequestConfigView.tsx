@@ -2,10 +2,13 @@ import React, { useState } from 'react';
 import styles from './RequestConfigView.module.css'
 import { HeadersView } from './HeadersView';
 import { AuthenticationView } from './AuthenticationView';
+import { Authentication, TokenState } from '../../models/Authentication';
 
-export interface RequestConfigProperties {
-    headers: RequestHeader[]
-    setHeaders: (headers: RequestHeader[]) => void
+export interface RequestConfigProperties extends HeadersConfigProperties, AuthenticationConfigProperties {}
+
+export interface AuthenticationConfigProperties {
+    auth: Authentication
+    setAuth: (auth: Authentication) => void
 }
 
 export interface RequestHeader {
@@ -15,7 +18,12 @@ export interface RequestHeader {
     enabled: boolean
 }
 
-const RequestConfigView = ({headers, setHeaders}: RequestConfigProperties) => {
+export interface HeadersConfigProperties {
+    headers: RequestHeader[]
+    setHeaders: (headers: RequestHeader[]) => void
+}
+
+const RequestConfigView = ({headers, setHeaders, auth, setAuth}: RequestConfigProperties) => {
   const [activeTab, setActiveTab] = useState('headers');
 
   const tabs = [
@@ -49,7 +57,7 @@ const RequestConfigView = ({headers, setHeaders}: RequestConfigProperties) => {
               case 'headers': return (<HeadersView headers={headers} setHeaders={setHeaders}></HeadersView>)
               
               case 'authentication':
-                return ( <AuthenticationView headers={headers} setHeaders={setHeaders}></AuthenticationView>)
+                return ( <AuthenticationView auth={auth} setAuth={setAuth}></AuthenticationView>)
               
               default:
                 return null;

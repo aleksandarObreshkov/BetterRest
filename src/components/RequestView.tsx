@@ -6,6 +6,7 @@ import ResponseView from './ResponseView';
 import RequestConfigView, {RequestHeader} from './requestConfigView/RequestConfigView'
 import { Request } from '../models/Request';
 import { HttpMethod } from '../models/HttpMethod';
+import { Authentication } from '../models/Authentication';
 
 export default function RequestView() {
   const [response, setResponse] = useState('');
@@ -13,12 +14,13 @@ export default function RequestView() {
   const [loading, setLoading] = useState(false)
   const [url, setUrl] = useState('')
   const [headers, setHeaders] = useState<RequestHeader[]>([]);
+  const [auth, setAuth] = useState<Authentication>();
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       const requestHeaders = formRequestHeaders()
-      let request = new Request(url, method as HttpMethod, requestHeaders)
+      let request = new Request(url, method as HttpMethod, requestHeaders, auth)
       let requestJson = request.toJSON()
     
       const response = await window.api.executeRequest(requestJson)
@@ -52,7 +54,7 @@ export default function RequestView() {
         <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
       </div>
       <div className='flex'>
-        <RequestConfigView headers={headers} setHeaders={setHeaders}></RequestConfigView>
+        <RequestConfigView headers={headers} setHeaders={setHeaders} auth={auth} setAuth={setAuth}></RequestConfigView>
         <ResponseView response={response}></ResponseView>
       </div>
     </div>

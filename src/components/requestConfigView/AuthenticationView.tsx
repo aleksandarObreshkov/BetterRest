@@ -1,20 +1,8 @@
-import { RequestConfigProperties } from './RequestConfigView'
+import { AuthenticationConfigProperties } from './RequestConfigView'
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Copy, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { ClientCredentialsAuthentication } from '../../models/Authentication';
-
-interface AuthenticationViewProps {
-  headers: Array<{ id: number; key: string; value: string; enabled: boolean }>;
-  setHeaders: (headers: Array<{ id: number; key: string; value: string; enabled: boolean }>) => void;
-}
-
-interface TokenResponse {
-  access_token: string;
-  token_type: string;
-  expires_in: number;
-  scope?: string;
-}
 
 interface TokenState {
   token: string;
@@ -22,7 +10,7 @@ interface TokenState {
   isExpired: boolean;
 }
 
-export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers, setHeaders }: RequestConfigProperties) => {
+export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({auth, setAuth}: AuthenticationConfigProperties) => {
   const [tokenUrl, setTokenUrl] = useState('');
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
@@ -50,43 +38,27 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
         isExpired: token.isExpired,
       });
 
-      // Update headers - remove any existing Authorization header and add new one
-      const filteredHeaders = headers.filter(h => h.key.toLowerCase() !== 'authorization');
-      const maxId = Math.max(...headers.map(h => h.id), 0);
+      authRequest.token = tokenState
+      setAuth(authRequest)
+      // // Update headers - remove any existing Authorization header and add new one
+      // const filteredHeaders = headers.filter(h => h.key.toLowerCase() !== 'authorization');
+      // const maxId = Math.max(...headers.map(h => h.id), 0);
       
-      setHeaders([
-        ...filteredHeaders,
-        {
-          id: maxId + 1,
-          key: 'Authorization',
-          value: `Bearer ${token.token}`,
-          enabled: true,
-        },
-      ]);
+      // setHeaders([
+      //   ...filteredHeaders,
+      //   {
+      //     id: maxId + 1,
+      //     key: 'Authorization',
+      //     value: `Bearer ${token.token}`,
+      //     enabled: true,
+      //   },
+      // ]);
     } catch(err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch token');
       setTokenState(null)
     }
     setIsLoading(false)
   }
-
-  // Check token expiration every second
-  useEffect(() => {
-    if (!tokenState) return;
-
-    const interval = setInterval(async () => {
-      const now = Date.now();
-      if (now >= tokenState.expiresAt && !tokenState.isExpired) {
-        setTokenState(prev => prev ? { ...prev, isExpired: true } : null);
-        // Auto-refetch if credentials are available
-        if (tokenUrl && clientId && clientSecret) {
-          return triggerTokenFetch()
-        }
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [tokenState, tokenUrl, clientId, clientSecret]);
 
   const copyToken = () => {
     if (tokenState?.token) {
@@ -105,7 +77,7 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-6">
       {/* Error Display */}
       {error && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded">
@@ -200,7 +172,7 @@ export const AuthenticationView: React.FC<AuthenticationViewProps> = ({ headers,
               {tokenState.isExpired ? (
                 <>
                   <AlertCircle className="w-5 h-5 text-orange-600" />
-                  <span className="text-sm font-medium text-orange-700">Token Expired - Refreshing...</span>
+                  <span className="text-sm font-medium text-orange-700">Token Expired</span>
                 </>
               ) : (
                 <>

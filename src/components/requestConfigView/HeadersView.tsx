@@ -1,8 +1,8 @@
-import { RequestConfigProperties } from './RequestConfigView'
+import { HeadersConfigProperties } from './RequestConfigView'
 import { Plus, X } from 'lucide-react';
 
 
-export function HeadersView({headers, setHeaders}: RequestConfigProperties) {
+export function HeadersView({headers, setHeaders}: HeadersConfigProperties) {
 
 const addHeader = () => {
     const newId = Math.max(...headers.map(h => h.id), 0) + 1;
