@@ -1,6 +1,6 @@
 import { AuthenticationConfigProperties } from './RequestConfigView'
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react';
 import { ClientCredentialsAuthentication } from '../../models/Authentication';
 
@@ -19,6 +19,7 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [tokenExpiresIn, setTokenExpiresIn] = useState<string>('0m 0s'); // Changed to state
 
   async function triggerTokenFetch() {
     const authRequest = new ClientCredentialsAuthentication()
@@ -40,25 +41,22 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
 
       authRequest.token = tokenState
       setAuth(authRequest)
-      // // Update headers - remove any existing Authorization header and add new one
-      // const filteredHeaders = headers.filter(h => h.key.toLowerCase() !== 'authorization');
-      // const maxId = Math.max(...headers.map(h => h.id), 0);
-      
-      // setHeaders([
-      //   ...filteredHeaders,
-      //   {
-      //     id: maxId + 1,
-      //     key: 'Authorization',
-      //     value: `Bearer ${token.token}`,
-      //     enabled: true,
-      //   },
-      // ]);
+      setTokenExpiresIn(getTimeRemaining())
     } catch(err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch token');
       setTokenState(null)
     }
     setIsLoading(false)
   }
+
+  useEffect(() => {
+    console.log("Checking time remaining")
+    const interval = setInterval(async () => {
+      setTokenExpiresIn(getTimeRemaining())
+    }, 1000);
+
+    return () => clearInterval(interval);
+  });
 
   const copyToken = () => {
     if (tokenState?.token) {
@@ -77,7 +75,7 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
   };
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 w-full">
       {/* Error Display */}
       {error && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded">
@@ -182,8 +180,8 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
               )}
             </div>
             {!tokenState.isExpired && (
-              <span className="text-xs text-gray-500">
-                Expires in: {getTimeRemaining()}
+              <span className="p-4 text-xs text-gray-500 flex">
+                Expires in: {tokenExpiresIn}
               </span>
             )}
           </div>
