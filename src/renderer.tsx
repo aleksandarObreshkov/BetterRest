@@ -4,7 +4,9 @@ import { createRoot } from 'react-dom/client';
 
 export interface IElectronAPI {
   executeRequest: (request: any) => any,
-  fetchToken: (authRequest: any) => any
+  fetchToken: (authRequest: any) => any,
+  saveRequestData: (data: any) => any,
+  loadRequestData: () => any,
 }
 
 declare global {

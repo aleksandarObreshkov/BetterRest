@@ -2,6 +2,9 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import { fetchToken, handleHttpRequest } from './requestHandler';
 import { Request } from './models/Request';
 import { ClientCredentialsAuthentication } from './models/Authentication';
+import { promises as fs } from 'fs';
+import path from 'path';
+
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
 declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
@@ -9,6 +12,40 @@ declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
+
+// Get the file path for storing data
+function getDataFilePath(filename: string) {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, filename);
+}
+
+// Save request data
+ipcMain.handle('save-request-data', async (event, data) => {
+  try {
+    const filePath = getDataFilePath('requests.json');
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving request data:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Load request data
+ipcMain.handle('load-request-data', async () => {
+  try {
+    const filePath = getDataFilePath('requests.json');
+    const data = await fs.readFile(filePath, 'utf-8');
+    return { success: true, data: JSON.parse(data) };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      // File doesn't exist yet, return null
+      return { success: true, data: null };
+    }
+    console.error('Error loading request data:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 ipcMain.handle("request", async (_, requestJson: any) => {
   const request = Request.fromJSON(requestJson)

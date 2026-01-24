@@ -21,6 +21,14 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
   const [copied, setCopied] = useState(false);
   const [tokenExpiresIn, setTokenExpiresIn] = useState<string>('0m 0s'); // Changed to state
 
+  useEffect(() => {
+    const clientAuth = auth as ClientCredentialsAuthentication;
+    setTokenUrl(clientAuth.oauthUrl || '');
+    setClientId(clientAuth.clientId || '');
+    setClientSecret(clientAuth.clientSecret || '');
+    setScope(clientAuth.scope || '');
+  }, [auth]);
+  
   async function triggerTokenFetch() {
     const authRequest = new ClientCredentialsAuthentication()
     authRequest.clientId = clientId

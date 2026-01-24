@@ -35,6 +35,22 @@ export class ClientCredentialsAuthentication implements Authentication {
         auth.scope = json.scope ? json.scope : null;
         return auth;
     }
+
+    static toJSON(auth: Authentication): any {
+        if (auth instanceof ClientCredentialsAuthentication) {
+            return {
+                clientId: auth.clientId,
+                clientSecret: auth.clientSecret,
+                oauthUrl: auth.oauthUrl,
+                token: auth.token,
+                scope: auth.scope
+            }
+        }
+        return {
+            authType: "other"
+        }
+        
+    }
 }
 
 export class BearerTokenAuthentication implements Authentication {
