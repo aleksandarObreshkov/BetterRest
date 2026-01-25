@@ -7,19 +7,22 @@ export class Request {
     private _auth?: Authentication;
     private _headers?: Map<string, string>;
     private _parameters?: Map<string, string>;
+    private _body?: string;
 
     constructor(
         url: string = '',
         method: HttpMethod = HttpMethod.GET,
         headers: Map<string, string> = new Map(),
         auth: Authentication = null,
-        parameters: Map<string, string> = new Map()
+        parameters: Map<string, string> = new Map(),
+        body: string = null
     ) {
         this._url = url;
         this._method = method;
         this._headers = headers;
         this._parameters = parameters;
         this._auth = auth
+        this._body = body
     }
 
     get url(): string | undefined {
@@ -62,13 +65,22 @@ export class Request {
         this._parameters = value;
     }
 
+    get body(): string {
+        return this._body
+    }
+
+    set body(value: string | undefined) {
+        this._body = value
+    }
+
     toJSON(): any {
         return {
             url: this._url,
             method: this._method,
             auth: this._auth,
             headers: this._headers,
-            parameters: this._parameters ? Array.from(this._parameters.entries()) : undefined
+            parameters: this._parameters ? Array.from(this._parameters.entries()) : undefined,
+            body: this._body
         };
     }
     
@@ -81,6 +93,7 @@ export class Request {
         }
         request._headers = json.headers;
         request._parameters = json.parameters ? new Map(json.parameters) : undefined;
+        request._body = json.body ? json.body : null;
         return request;
     }
 }
