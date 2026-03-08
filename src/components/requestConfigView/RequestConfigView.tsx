@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import styles from './RequestConfigView.module.css'
 import { HeadersView } from './HeadersView';
 import { AuthenticationView } from './AuthenticationView';
-import { Authentication, TokenState } from '../../models/Authentication';
+import { BodyView, BodyType } from './BodyView';
+import { Authentication } from '../../models/Authentication';
 
-export interface RequestConfigProperties extends HeadersConfigProperties, AuthenticationConfigProperties {}
+export interface RequestConfigProperties extends HeadersConfigProperties, AuthenticationConfigProperties, BodyConfigProperties {}
 
 export interface AuthenticationConfigProperties {
     auth: Authentication
@@ -23,11 +24,19 @@ export interface HeadersConfigProperties {
     setHeaders: (headers: RequestHeader[]) => void
 }
 
-const RequestConfigView = ({headers, setHeaders, auth, setAuth}: RequestConfigProperties) => {
+export interface BodyConfigProperties {
+    body: string
+    setBody: (body: string) => void
+    bodyType: BodyType
+    setBodyType: (bodyType: BodyType) => void
+}
+
+const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, bodyType, setBodyType}: RequestConfigProperties) => {
   const [activeTab, setActiveTab] = useState('headers');
 
   const tabs = [
     { id: 'headers', label: 'Headers' },
+    { id: 'body', label: 'Body' },
     { id: 'authentication', label: 'Authentication' }
   ];
 
@@ -37,35 +46,37 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth}: RequestConfigPr
       <div className="border-b border-gray-200">
         <div className='flex'>
           {tabs.map(tab => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`px-6 py-3 text-sm font-medium transition-colors ${
-                        activeTab === tab.id
-                          ? 'text-blue-600 border-b-2 border-blue-600'
-                          : 'text-gray-600 hover:text-gray-900'
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-6 py-3 text-sm font-medium transition-colors ${
+                activeTab === tab.id
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
         <div className='flex'>
-                    {(() => {
+          {(() => {
             switch (activeTab) {
-              case 'headers': return (<HeadersView headers={headers} setHeaders={setHeaders}></HeadersView>)
-              
+              case 'headers':
+                return (<HeadersView headers={headers} setHeaders={setHeaders} />)
+
               case 'authentication':
-                return ( <AuthenticationView auth={auth} setAuth={setAuth}></AuthenticationView>)
-              
+                return (<AuthenticationView auth={auth} setAuth={setAuth} />)
+
+              case 'body':
+                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} />)
+
               default:
                 return null;
             }
           })()}
         </div>
-        
-
 
       </div>
     </div>

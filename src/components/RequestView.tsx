@@ -7,6 +7,7 @@ import RequestConfigView, {RequestHeader} from './requestConfigView/RequestConfi
 import { Request } from '../models/Request';
 import { HttpMethod } from '../models/HttpMethod';
 import { Authentication, ClientCredentialsAuthentication } from '../models/Authentication';
+import { BodyType } from './requestConfigView/BodyView';
 
 export default function RequestView() {
   const [response, setResponse] = useState('');
@@ -15,6 +16,9 @@ export default function RequestView() {
   const [url, setUrl] = useState('')
   const [headers, setHeaders] = useState<RequestHeader[]>([]);
   const [auth, setAuth] = useState<Authentication>();
+  const [body, setBody] = useState<string>();
+  const [bodyType, setBodyType] = useState<BodyType>();
+
 
 
   const [requestData, setRequestData] = useState({
@@ -36,6 +40,7 @@ export default function RequestView() {
           setUrl(result.data.url)
           setMethod(result.data.method)
           setAuth(result.data.auth)
+          setBody(result.data.body)
         }
       } catch (error) {
         console.error('Failed to load request data:', error);
@@ -116,7 +121,7 @@ export default function RequestView() {
         <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
       </div>
       <div className='flex'>
-        <RequestConfigView headers={headers} setHeaders={setHeaders} auth={auth} setAuth={setAuth}></RequestConfigView>
+        <RequestConfigView headers={headers} setHeaders={setHeaders} auth={auth} setAuth={setAuth} body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType}></RequestConfigView>
         <ResponseView response={response}></ResponseView>
       </div>
     </div>
