@@ -8,6 +8,7 @@ import { Request } from '../models/Request';
 import { HttpMethod } from '../models/HttpMethod';
 import { Authentication, ClientCredentialsAuthentication } from '../models/Authentication';
 import { BodyType } from './requestConfigView/BodyView';
+import { extractOperation } from '../utils/graphqlParser';
 
 export default function RequestView() {
   const [response, setResponse] = useState('');
@@ -18,6 +19,7 @@ export default function RequestView() {
   const [auth, setAuth] = useState<Authentication>();
   const [body, setBody] = useState<string>();
   const [bodyType, setBodyType] = useState<BodyType>();
+  const [selectedGraphQLOperation, setSelectedGraphQLOperation] = useState<string | null>(null);
 
 
 
@@ -41,10 +43,12 @@ export default function RequestView() {
           setMethod(result.data.method)
           setAuth(result.data.auth)
           setBody(result.data.body)
+          setBodyType(result.data.bodyType)
+          setSelectedGraphQLOperation(result.data.selectedGraphQLOperation)
         }
       } catch (error) {
         console.error('Failed to load request data:', error);
-      } 
+      }
     };
 
     loadData();
@@ -74,13 +78,24 @@ export default function RequestView() {
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const requestHeaders = formRequestHeaders()
-      let request = new Request(url, method as HttpMethod, requestHeaders, auth)
+      const requestHeaders = formRequestHeaders();
+
+      // Extract selected GraphQL operation if applicable
+      let requestBody = body;
+      if (bodyType === 'graphql' && body && selectedGraphQLOperation !== undefined) {
+        const extracted = extractOperation(body, selectedGraphQLOperation);
+        if (extracted) {
+          requestBody = extracted;
+        }
+        // If extraction fails, send the full body as fallback
+      }
+
+      let request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody)
       let requestJson = request.toJSON()
-    
+
       const response = await window.api.executeRequest(requestJson)
       console.log(response.body)
-    
+
       await new Promise(resolve => setTimeout(resolve, 3000));
       setResponse(response.body);
     } catch (error) {
@@ -95,7 +110,9 @@ export default function RequestView() {
     url: url,
     method: method,
     headers: headers,
-    body: '',
+    body: body,
+    bodyType: bodyType,
+    selectedGraphQLOperation: selectedGraphQLOperation,
     queryParams: ["a=10"],
     auth: ClientCredentialsAuthentication.toJSON(auth)
   }
@@ -121,7 +138,18 @@ export default function RequestView() {
         <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
       </div>
       <div className='flex'>
-        <RequestConfigView headers={headers} setHeaders={setHeaders} auth={auth} setAuth={setAuth} body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType}></RequestConfigView>
+        <RequestConfigView
+          headers={headers}
+          setHeaders={setHeaders}
+          auth={auth}
+          setAuth={setAuth}
+          body={body}
+          setBody={setBody}
+          bodyType={bodyType}
+          setBodyType={setBodyType}
+          selectedGraphQLOperation={selectedGraphQLOperation}
+          setSelectedGraphQLOperation={setSelectedGraphQLOperation}
+        />
         <ResponseView response={response}></ResponseView>
       </div>
     </div>

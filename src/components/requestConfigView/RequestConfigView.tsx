@@ -29,9 +29,11 @@ export interface BodyConfigProperties {
     setBody: (body: string) => void
     bodyType: BodyType
     setBodyType: (bodyType: BodyType) => void
+    selectedGraphQLOperation?: string | null
+    setSelectedGraphQLOperation?: (operation: string | null) => void
 }
 
-const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, bodyType, setBodyType}: RequestConfigProperties) => {
+const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, bodyType, setBodyType, selectedGraphQLOperation, setSelectedGraphQLOperation}: RequestConfigProperties) => {
   const [activeTab, setActiveTab] = useState('headers');
 
   const tabs = [
@@ -70,7 +72,7 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, b
                 return (<AuthenticationView auth={auth} setAuth={setAuth} />)
 
               case 'body':
-                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} />)
+                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} selectedGraphQLOperation={selectedGraphQLOperation} setSelectedGraphQLOperation={setSelectedGraphQLOperation} />)
 
               default:
                 return null;

@@ -19,8 +19,9 @@ export async function handleHttpRequest(request: Request) {
     }
 
     const result = await fetch(request.url, {
-      method: request.method, 
-      headers: headers
+      method: request.method,
+      headers: headers,
+      body: request.body
     })
 
     const body = await result.text()

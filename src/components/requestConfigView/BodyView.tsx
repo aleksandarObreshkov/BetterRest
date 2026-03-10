@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BodyConfigProperties } from './RequestConfigView';
 import { ChevronDown } from 'lucide-react';
+import { parseGraphQLOperations, GraphQLOperation } from '../../utils/graphqlParser';
 
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
@@ -89,12 +90,16 @@ const placeholders: Record<BodyType, string> = {
 }`,
 };
 
-export function BodyView({ body, setBody, bodyType, setBodyType }: BodyConfigProperties) {
+export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQLOperation, setSelectedGraphQLOperation }: BodyConfigProperties) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   // Track whether the next update comes from inside the editor (user typing)
   // vs from outside (prop change) to avoid cursor-reset loops
   const internalChangeRef = useRef(false);
+
+  // State for parsed GraphQL operations
+  const [operations, setOperations] = useState<GraphQLOperation[]>([]);
+  const [parseErrors, setParseErrors] = useState<string[]>([]);
 
   // Initialise / reinitialise the editor whenever bodyType changes
   useEffect(() => {
@@ -139,7 +144,6 @@ export function BodyView({ body, setBody, bodyType, setBodyType }: BodyConfigPro
     };
     // We intentionally only re-run when bodyType changes,
     // body changes are handled in the effect below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodyType]);
 
   // Sync external body prop changes into the editor without resetting the cursor
@@ -160,6 +164,28 @@ export function BodyView({ body, setBody, bodyType, setBodyType }: BodyConfigPro
       });
     }
   }, [body]);
+
+  // Parse GraphQL operations when body or bodyType changes
+  useEffect(() => {
+    if (bodyType !== 'graphql' || !body?.trim()) {
+      setOperations([]);
+      setParseErrors([]);
+      return;
+    }
+
+    const result = parseGraphQLOperations(body);
+    setOperations(result.operations);
+    setParseErrors(result.errors);
+
+    // Auto-select first operation if none selected
+    if (result.operations.length > 0 && !selectedGraphQLOperation && setSelectedGraphQLOperation) {
+      setSelectedGraphQLOperation(result.operations[0].name);
+    }
+    // Clear selection if selected operation no longer exists
+    if (selectedGraphQLOperation && !result.operations.some(op => op.name === selectedGraphQLOperation) && setSelectedGraphQLOperation) {
+      setSelectedGraphQLOperation(result.operations.length > 0 ? result.operations[0].name : null);
+    }
+  }, [body, bodyType, selectedGraphQLOperation, setSelectedGraphQLOperation]);
 
   return (
     <div className="space-y-2 w-full">
@@ -182,6 +208,35 @@ export function BodyView({ body, setBody, bodyType, setBodyType }: BodyConfigPro
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           </div>
         </div>
+
+        {/* GraphQL Operation Selector - only show when bodyType is graphql */}
+        {bodyType === 'graphql' && (
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+              Operation
+            </label>
+            {parseErrors.length > 0 ? (
+              <span className="text-sm text-red-600">Invalid GraphQL syntax</span>
+            ) : operations.length === 0 ? (
+              <span className="text-sm text-gray-500">No operations found</span>
+            ) : (
+              <div className="relative">
+                <select
+                  value={selectedGraphQLOperation ?? ''}
+                  onChange={(e) => setSelectedGraphQLOperation && setSelectedGraphQLOperation(e.target.value || null)}
+                  className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 cursor-pointer"
+                >
+                  {operations.map((op, index) => (
+                    <option key={`${op.name}-${op.startOffset}-${index}`} value={op.name ?? ''}>
+                      {op.displayName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Code Editor */}
         <div
