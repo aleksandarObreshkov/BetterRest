@@ -36,7 +36,6 @@ export default function RequestView() {
     const loadData = async () => {
       try {
         const result = await window.api.loadRequestData();
-        console.log(result)
         if (result.success && result.data) {
           setRequestData(result.data);
           setUrl(result.data.url)
@@ -84,17 +83,19 @@ export default function RequestView() {
       let requestBody = body;
       if (bodyType === 'graphql' && body && selectedGraphQLOperation !== undefined) {
         const extracted = extractOperation(body, selectedGraphQLOperation);
+        
         if (extracted) {
-          requestBody = extracted;
+          requestBody = `{"query": "${extracted}"}`
+          requestBody = requestBody.replace(/\s+/g, ' ').trim();
+
+          requestHeaders.set("Content-Type", "application/json")
         }
         // If extraction fails, send the full body as fallback
       }
 
       let request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody)
       let requestJson = request.toJSON()
-
       const response = await window.api.executeRequest(requestJson)
-      console.log(response.body)
 
       await new Promise(resolve => setTimeout(resolve, 3000));
       setResponse(response.body);

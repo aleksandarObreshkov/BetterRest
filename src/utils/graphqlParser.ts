@@ -1,5 +1,4 @@
-import { gql } from 'graphql-tag';
-import { DocumentNode, OperationDefinitionNode } from 'graphql';
+import { parse, DocumentNode, OperationDefinitionNode } from 'graphql';
 
 export interface GraphQLOperation {
   name: string | null;           // Operation name or null for unnamed
@@ -32,7 +31,7 @@ export function parseGraphQLOperations(source: string): ParseResult {
   let documentNode: DocumentNode;
 
   try {
-    documentNode = gql(source);
+    documentNode = parse(source, { noLocation: false });
   } catch (error) {
     // Invalid GraphQL syntax
     result.errors.push(error instanceof Error ? error.message : 'Invalid GraphQL syntax');

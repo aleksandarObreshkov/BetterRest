@@ -31,7 +31,6 @@ const addHeader = () => {
     return headers
       .filter(h => h.enabled && h.key.trim() !== '')
       .reduce((acc: any, h) => {
-        console.log(typeof acc)
         acc[h.key] = h.value;
         return acc;
       }, {});
