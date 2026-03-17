@@ -16,7 +16,7 @@ export default function RequestView() {
   const [loading, setLoading] = useState(false)
   const [url, setUrl] = useState('')
   const [headers, setHeaders] = useState<RequestHeader[]>([]);
-  const [auth, setAuth] = useState<Authentication>();
+  const [auth, setAuth] = useState<Authentication>(new ClientCredentialsAuthentication());
   const [body, setBody] = useState<string>();
   const [bodyType, setBodyType] = useState<BodyType>();
   const [selectedGraphQLOperation, setSelectedGraphQLOperation] = useState<string | null>(null);
