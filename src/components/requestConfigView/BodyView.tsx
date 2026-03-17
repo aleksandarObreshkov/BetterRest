@@ -1,15 +1,127 @@
 import { useEffect, useRef, useState } from 'react';
 import { BodyConfigProperties } from './RequestConfigView';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Database, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { parseGraphQLOperations, GraphQLOperation } from '../../utils/graphqlParser';
+import { useGraphQLSchema } from '../../hooks/useGraphQLSchema';
 
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Extension } from '@codemirror/state';
 import { json } from '@codemirror/lang-json';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
 import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
-import { autocompletion, closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { lintKeymap } from '@codemirror/lint';
+import { autocompletion, closeBrackets, closeBracketsKeymap, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { lintKeymap, linter, Diagnostic } from '@codemirror/lint';
+
+import { GraphQLSchema } from 'graphql';
+import { getAutocompleteSuggestions, getDiagnostics, Position } from 'graphql-language-service';
+
+// ---------------------------------------------------------------------------
+// GraphQL CodeMirror extensions
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts a CodeMirror absolute offset into a graphql-language-service
+ * Position ({ line, character }).
+ */
+function offsetToPosition(doc: string, offset: number): Position {
+  const lines = doc.slice(0, offset).split('\n');
+  return {
+    line: lines.length - 1,
+    character: lines[lines.length - 1].length,
+  };
+}
+
+/**
+ * Autocomplete extension — delegates to graphql-language-service
+ * getAutocompleteSuggestions. Without a schema it returns nothing;
+ * with a schema it provides full field / argument / type suggestions.
+ */
+function graphqlCompletionSource(schema: GraphQLSchema | null) {
+  return async (context: CompletionContext): Promise<CompletionResult | null> => {
+    if (!schema) return null;
+
+    const doc = context.state.doc.toString();
+    const position = offsetToPosition(doc, context.pos);
+
+    try {
+      const suggestions = getAutocompleteSuggestions(schema, doc, position);
+
+      if (!suggestions.length) return null;
+
+      // Find the start of the current token so CodeMirror replaces it cleanly
+      const tokenMatch = context.matchBefore(/[\w$]*/);
+      const from = tokenMatch ? tokenMatch.from : context.pos;
+
+      return {
+        from,
+        options: suggestions.map((s) => ({
+          label: s.label,
+          detail: s.detail ?? undefined,
+          info: s.documentation
+            ? typeof s.documentation === 'string'
+              ? s.documentation
+              : (s.documentation as any).value ?? undefined
+            : undefined,
+          type: kindToType(s.kind),
+        })),
+      };
+    } catch {
+      return null;
+    }
+  };
+}
+
+/**
+ * Maps graphql-language-service completion kinds to CodeMirror completion
+ * types, which control the icon shown in the dropdown.
+ */
+function kindToType(kind: string | undefined): string {
+  if (!kind) return 'text';
+  const k = kind.toLowerCase();
+  if (k.includes('field'))     return 'property';
+  if (k.includes('type'))      return 'type';
+  if (k.includes('argument'))  return 'variable';
+  if (k.includes('directive')) return 'keyword';
+  if (k.includes('enum'))      return 'enum';
+  if (k.includes('fragment'))  return 'function';
+  return 'text';
+}
+
+/**
+ * Lint extension — delegates to graphql-language-service getDiagnostics.
+ * Shows squiggly underlines for syntax and validation errors.
+ */
+function graphqlLinter(schema: GraphQLSchema | null): Extension {
+  return linter((view) => {
+    const doc = view.state.doc.toString();
+    if (!doc.trim()) return [];
+
+    try {
+      const rawDiagnostics = getDiagnostics(doc, schema ?? undefined);
+
+      return rawDiagnostics.map((d): Diagnostic => {
+        // Convert line/character back to absolute offsets
+        const startLine = view.state.doc.line(d.range.start.line + 1);
+        const endLine   = view.state.doc.line(d.range.end.line + 1);
+        const from = startLine.from + d.range.start.character;
+        const to   = endLine.from   + d.range.end.character;
+
+        return {
+          from: Math.min(from, view.state.doc.length),
+          to:   Math.min(to,   view.state.doc.length),
+          severity: d.severity === 1 ? 'error' : 'warning',
+          message: d.message,
+        };
+      });
+    } catch {
+      return [];
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Smart Enter keymap
+// ---------------------------------------------------------------------------
 
 /**
  * Smart Enter handler:
@@ -32,17 +144,15 @@ const smartEnterKeymap = keymap.of([
       const pairs: Record<string, string> = { '{': '}', '[': ']' };
       if (!pairs[charBefore] || pairs[charBefore] !== charAfter) return false;
 
-      // Work out how many spaces the current line is indented
-      const line       = state.doc.lineAt(from);
-      const lineText   = line.text;
-      const baseIndent = lineText.match(/^(\s*)/)?.[1] ?? '';
-      const innerIndent = baseIndent + '  '; // +2 spaces
+      const line        = state.doc.lineAt(from);
+      const lineText    = line.text;
+      const baseIndent  = lineText.match(/^(\s*)/)?.[1] ?? '';
+      const innerIndent = baseIndent + '  ';
 
       const insert = `\n${innerIndent}\n${baseIndent}`;
 
       view.dispatch({
         changes: { from, to: from, insert },
-        // Place the cursor on the inner (blank) line
         selection: { anchor: from + 1 + innerIndent.length },
       });
 
@@ -50,6 +160,10 @@ const smartEnterKeymap = keymap.of([
     },
   },
 ]);
+
+// ---------------------------------------------------------------------------
+// Editor theme & placeholders
+// ---------------------------------------------------------------------------
 
 export type BodyType = 'json' | 'graphql';
 
@@ -90,25 +204,41 @@ const placeholders: Record<BodyType, string> = {
 }`,
 };
 
-export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQLOperation, setSelectedGraphQLOperation }: BodyConfigProperties) {
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+interface BodyViewProps extends BodyConfigProperties {
+  url: string;
+}
+
+export function BodyView({
+  body,
+  setBody,
+  bodyType,
+  setBodyType,
+  selectedGraphQLOperation,
+  setSelectedGraphQLOperation,
+  url,
+}: BodyViewProps) {
   const editorRef = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  // Track whether the next update comes from inside the editor (user typing)
-  // vs from outside (prop change) to avoid cursor-reset loops
+  const viewRef   = useRef<EditorView | null>(null);
   const internalChangeRef = useRef(false);
 
-  // State for parsed GraphQL operations
   const [operations, setOperations] = useState<GraphQLOperation[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
 
-  // Initialise / reinitialise the editor whenever bodyType changes
+  const { schema, loading, error, loadSchema } = useGraphQLSchema(url);
+
+  // Initialise / reinitialise the editor whenever bodyType or schema changes.
+  // Schema is in the dep array so the completion/lint extensions are re-created
+  // with the live schema object once introspection completes.
   useEffect(() => {
     if (!editorRef.current) return;
 
-    // Destroy any existing instance
     viewRef.current?.destroy();
 
-    const extensions = [
+    const extensions: Extension[] = [
       editorTheme,
       smartEnterKeymap,
       keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...lintKeymap, indentWithTab]),
@@ -124,14 +254,19 @@ export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQL
           setBody(update.state.doc.toString());
         }
       }),
-      // Only add JSON language support for the json type
-      ...(bodyType === 'json' ? [json(), autocompletion()] : []),
+      ...(bodyType === 'json'
+        ? [json(), autocompletion()]
+        : [
+            // Schema-aware autocomplete; gracefully no-ops when schema is null
+            autocompletion({ override: [graphqlCompletionSource(schema)] }),
+            // Inline diagnostics; shows syntax errors even without a schema,
+            // and validation errors once the schema is loaded
+            graphqlLinter(schema),
+          ]
+      ),
     ];
 
-    const state = EditorState.create({
-      doc: body,
-      extensions,
-    });
+    const state = EditorState.create({ doc: body, extensions });
 
     viewRef.current = new EditorView({
       state,
@@ -142,16 +277,13 @@ export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQL
       viewRef.current?.destroy();
       viewRef.current = null;
     };
-    // We intentionally only re-run when bodyType changes,
-    // body changes are handled in the effect below.
-  }, [bodyType]);
+  }, [bodyType, schema]);
 
-  // Sync external body prop changes into the editor without resetting the cursor
+  // Sync external body prop changes into the editor without resetting cursor
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
 
-    // If this change originated from inside the editor, skip — already in sync
     if (internalChangeRef.current) {
       internalChangeRef.current = false;
       return;
@@ -177,15 +309,40 @@ export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQL
     setOperations(result.operations);
     setParseErrors(result.errors);
 
-    // Auto-select first operation if none selected
     if (result.operations.length > 0 && !selectedGraphQLOperation && setSelectedGraphQLOperation) {
       setSelectedGraphQLOperation(result.operations[0].name);
     }
-    // Clear selection if selected operation no longer exists
-    if (selectedGraphQLOperation && !result.operations.some(op => op.name === selectedGraphQLOperation) && setSelectedGraphQLOperation) {
+    if (
+      selectedGraphQLOperation &&
+      !result.operations.some((op) => op.name === selectedGraphQLOperation) &&
+      setSelectedGraphQLOperation
+    ) {
       setSelectedGraphQLOperation(result.operations.length > 0 ? result.operations[0].name : null);
     }
   }, [body, bodyType, selectedGraphQLOperation, setSelectedGraphQLOperation]);
+
+  // Schema status indicator
+  const schemaStatus = () => {
+    if (loading) return (
+      <span className="flex items-center gap-1 text-xs text-gray-500">
+        <Loader2 className="w-3 h-3 animate-spin" />
+        Loading…
+      </span>
+    );
+    if (error) return (
+      <span className="flex items-center gap-1 text-xs text-red-500" title={error}>
+        <AlertCircle className="w-3 h-3" />
+        Failed
+      </span>
+    );
+    if (schema) return (
+      <span className="flex items-center gap-1 text-xs text-green-600">
+        <CheckCircle2 className="w-3 h-3" />
+        Schema loaded
+      </span>
+    );
+    return null;
+  };
 
   return (
     <div className="space-y-2 w-full">
@@ -209,33 +366,56 @@ export function BodyView({ body, setBody, bodyType, setBodyType, selectedGraphQL
           </div>
         </div>
 
-        {/* GraphQL Operation Selector - only show when bodyType is graphql */}
+        {/* GraphQL controls */}
         {bodyType === 'graphql' && (
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-              Operation
-            </label>
-            {parseErrors.length > 0 ? (
-              <span className="text-sm text-red-600">Invalid GraphQL syntax</span>
-            ) : operations.length === 0 ? (
-              <span className="text-sm text-gray-500">No operations found</span>
-            ) : (
-              <div className="relative">
-                <select
-                  value={selectedGraphQLOperation ?? ''}
-                  onChange={(e) => setSelectedGraphQLOperation && setSelectedGraphQLOperation(e.target.value || null)}
-                  className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 cursor-pointer"
-                >
-                  {operations.map((op, index) => (
-                    <option key={`${op.name}-${op.startOffset}-${index}`} value={op.name ?? ''}>
-                      {op.displayName}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-              </div>
-            )}
-          </div>
+          <>
+            {/* Schema loader row */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Schema
+              </label>
+              <button
+                onClick={loadSchema}
+                disabled={loading || !url?.trim()}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={!url?.trim() ? 'Enter a URL first' : 'Load schema via introspection'}
+              >
+                <Database className="w-3.5 h-3.5" />
+                Load Schema
+              </button>
+              {schemaStatus()}
+            </div>
+
+            {/* Operation selector row */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                Operation
+              </label>
+              {parseErrors.length > 0 ? (
+                <span className="text-sm text-red-600">Invalid GraphQL syntax</span>
+              ) : operations.length === 0 ? (
+                <span className="text-sm text-gray-500">No operations found</span>
+              ) : (
+                <div className="relative">
+                  <select
+                    value={selectedGraphQLOperation ?? ''}
+                    onChange={(e) =>
+                      setSelectedGraphQLOperation &&
+                      setSelectedGraphQLOperation(e.target.value || null)
+                    }
+                    className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 cursor-pointer"
+                  >
+                    {operations.map((op, index) => (
+                      <option key={`${op.name}-${op.startOffset}-${index}`} value={op.name ?? ''}>
+                        {op.displayName}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Code Editor */}

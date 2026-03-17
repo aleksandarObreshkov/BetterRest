@@ -6,4 +6,6 @@ contextBridge.exposeInMainWorld('api', {
 
   saveRequestData: (data: any) => ipcRenderer.invoke('save-request-data', data),
   loadRequestData: () => ipcRenderer.invoke('load-request-data'),
+
+  introspectGraphQL: (url: string) => ipcRenderer.invoke('graphql-introspect', url),
 });

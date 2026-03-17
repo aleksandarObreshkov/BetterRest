@@ -53,10 +53,132 @@ ipcMain.handle("request", async (_, requestJson: any) => {
 })
 
 ipcMain.handle("authRequest", async (_, requestJson: any) => {
-  
   const authRequest = ClientCredentialsAuthentication.fromJSON(requestJson)
   return await fetchToken(authRequest)
 })
+
+// GraphQL introspection — runs in main process to avoid CORS restrictions
+ipcMain.handle('graphql-introspect', async (_, url: string) => {
+  try {
+    const introspectionQuery = `
+      query IntrospectionQuery {
+        __schema {
+          queryType { name }
+          mutationType { name }
+          subscriptionType { name }
+          types {
+            ...FullType
+          }
+          directives {
+            name
+            description
+            locations
+            args {
+              ...InputValue
+            }
+          }
+        }
+      }
+
+      fragment FullType on __Type {
+        kind
+        name
+        description
+        fields(includeDeprecated: true) {
+          name
+          description
+          args {
+            ...InputValue
+          }
+          type {
+            ...TypeRef
+          }
+          isDeprecated
+          deprecationReason
+        }
+        inputFields {
+          ...InputValue
+        }
+        interfaces {
+          ...TypeRef
+        }
+        enumValues(includeDeprecated: true) {
+          name
+          description
+          isDeprecated
+          deprecationReason
+        }
+        possibleTypes {
+          ...TypeRef
+        }
+      }
+
+      fragment InputValue on __InputValue {
+        name
+        description
+        type { ...TypeRef }
+        defaultValue
+      }
+
+      fragment TypeRef on __Type {
+        kind
+        name
+        ofType {
+          kind
+          name
+          ofType {
+            kind
+            name
+            ofType {
+              kind
+              name
+              ofType {
+                kind
+                name
+                ofType {
+                  kind
+                  name
+                  ofType {
+                    kind
+                    name
+                    ofType {
+                      kind
+                      name
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ query: introspectionQuery }),
+    });
+
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
+    }
+
+    const result = await response.json();
+
+    if (result.errors) {
+      return { success: false, error: result.errors[0]?.message ?? 'Introspection failed' };
+    }
+
+    return { success: true, data: result.data };
+  } catch (error) {
+    console.error('GraphQL introspection error:', error);
+    return { success: false, error: error.message };
+  }
+});
 
 const createWindow = (): void => {
   // Create the browser window.

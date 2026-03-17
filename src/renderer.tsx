@@ -7,6 +7,7 @@ export interface IElectronAPI {
   fetchToken: (authRequest: any) => any,
   saveRequestData: (data: any) => any,
   loadRequestData: () => any,
+  introspectGraphQL: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>,
 }
 
 declare global {
