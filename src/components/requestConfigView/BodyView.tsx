@@ -25,10 +25,10 @@ import { getAutocompleteSuggestions, getDiagnostics, Position } from 'graphql-la
  */
 function offsetToPosition(doc: string, offset: number): Position {
   const lines = doc.slice(0, offset).split('\n');
-  return {
-    line: lines.length - 1,
-    character: lines[lines.length - 1].length,
-  };
+  return new Position(
+    lines.length - 1,
+    lines[lines.length - 1].length
+  );
 }
 
 /**
@@ -75,9 +75,9 @@ function graphqlCompletionSource(schema: GraphQLSchema | null) {
  * Maps graphql-language-service completion kinds to CodeMirror completion
  * types, which control the icon shown in the dropdown.
  */
-function kindToType(kind: string | undefined): string {
+function kindToType(kind: number | string | undefined): string {
   if (!kind) return 'text';
-  const k = kind.toLowerCase();
+  const k = String(kind).toLowerCase();
   if (k.includes('field'))     return 'property';
   if (k.includes('type'))      return 'type';
   if (k.includes('argument'))  return 'variable';

@@ -150,6 +150,8 @@ export default function RequestView() {
           setBodyType={setBodyType}
           selectedGraphQLOperation={selectedGraphQLOperation}
           setSelectedGraphQLOperation={setSelectedGraphQLOperation}
+          url={url}
+          setUrl={setUrl}
         />
         <ResponseView response={response}></ResponseView>
       </div>
