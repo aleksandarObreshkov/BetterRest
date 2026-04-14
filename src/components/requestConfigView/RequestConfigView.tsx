@@ -1,106 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import styles from './RequestConfigView.module.css'
 import { HeadersView } from './HeadersView';
 import { AuthenticationView } from './AuthenticationView';
 import { BodyView, BodyType } from './BodyView';
 import { Authentication } from '../../models/Authentication';
-import { Request } from '../../models/Request';
-import { HttpMethod } from '../../models/HttpMethod';
-
-
-const introspectionQuery = `
-      query IntrospectionQuery {
-        __schema {
-          queryType { name }
-          mutationType { name }
-          subscriptionType { name }
-          types {
-            ...FullType
-          }
-          directives {
-            name
-            description
-            locations
-            args {
-              ...InputValue
-            }
-          }
-        }
-      }
-
-      fragment FullType on __Type {
-        kind
-        name
-        description
-        fields(includeDeprecated: true) {
-          name
-          description
-          args {
-            ...InputValue
-          }
-          type {
-            ...TypeRef
-          }
-          isDeprecated
-          deprecationReason
-        }
-        inputFields {
-          ...InputValue
-        }
-        interfaces {
-          ...TypeRef
-        }
-        enumValues(includeDeprecated: true) {
-          name
-          description
-          isDeprecated
-          deprecationReason
-        }
-        possibleTypes {
-          ...TypeRef
-        }
-      }
-
-      fragment InputValue on __InputValue {
-        name
-        description
-        type { ...TypeRef }
-        defaultValue
-      }
-
-      fragment TypeRef on __Type {
-        kind
-        name
-        ofType {
-          kind
-          name
-          ofType {
-            kind
-            name
-            ofType {
-              kind
-              name
-              ofType {
-                kind
-                name
-                ofType {
-                  kind
-                  name
-                  ofType {
-                    kind
-                    name
-                    ofType {
-                      kind
-                      name
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
 
 export interface RequestConfigProperties extends HeadersConfigProperties, AuthenticationConfigProperties, BodyConfigProperties {}
 
@@ -130,6 +33,7 @@ export interface BodyConfigProperties {
     setSelectedGraphQLOperation?: (operation: string | null) => void
     url: string
     setUrl: (url: string) => void
+    auth: Authentication
 }
 
 const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, bodyType, setBodyType, selectedGraphQLOperation, setSelectedGraphQLOperation, url, setUrl}: RequestConfigProperties) => {
@@ -140,15 +44,6 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, b
     { id: 'body', label: 'Body' },
     { id: 'authentication', label: 'Authentication' }
   ];
-
-  async function loadGraphQLSchema() {
-    var headers = new Map<string, string>()
-    headers.set("Authorization", auth.type)
-    let request = new Request(url, "POST" as HttpMethod, headers, auth, undefined, introspectionQuery)
-    let requestJson = request.toJSON()
-    const response = await window.api.executeRequest(requestJson)
-    return response
-  }
 
   return (
     <div className={`${styles.rootConfig}`}>
@@ -180,7 +75,7 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, b
                 return (<AuthenticationView auth={auth} setAuth={setAuth} />)
 
               case 'body':
-                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} selectedGraphQLOperation={selectedGraphQLOperation} setSelectedGraphQLOperation={setSelectedGraphQLOperation} url={url} setUrl={setUrl}/>)
+                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} selectedGraphQLOperation={selectedGraphQLOperation} setSelectedGraphQLOperation={setSelectedGraphQLOperation} url={url} setUrl={setUrl} auth={auth}/>)
 
               default:
                 return null;

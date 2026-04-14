@@ -3,6 +3,7 @@ import { BodyConfigProperties } from './RequestConfigView';
 import { ChevronDown, Database, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { parseGraphQLOperations, GraphQLOperation } from '../../utils/graphqlParser';
 import { useGraphQLSchema } from '../../hooks/useGraphQLSchema';
+import { Authentication } from '../../models/Authentication';
 
 import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/view';
 import { EditorState, Extension } from '@codemirror/state';
@@ -210,6 +211,7 @@ const placeholders: Record<BodyType, string> = {
 
 interface BodyViewProps extends BodyConfigProperties {
   url: string;
+  auth: Authentication;
 }
 
 export function BodyView({
@@ -220,6 +222,7 @@ export function BodyView({
   selectedGraphQLOperation,
   setSelectedGraphQLOperation,
   url,
+  auth,
 }: BodyViewProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef   = useRef<EditorView | null>(null);
@@ -228,7 +231,7 @@ export function BodyView({
   const [operations, setOperations] = useState<GraphQLOperation[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
 
-  const { schema, loading, error, loadSchema } = useGraphQLSchema(url);
+  const { schema, loading, error, loadSchema } = useGraphQLSchema(url, auth);
 
   // Initialise / reinitialise the editor whenever bodyType or schema changes.
   // Schema is in the dep array so the completion/lint extensions are re-created

@@ -21,8 +21,6 @@ export default function RequestView() {
   const [bodyType, setBodyType] = useState<BodyType>();
   const [selectedGraphQLOperation, setSelectedGraphQLOperation] = useState<string | null>(null);
 
-
-
   const [requestData, setRequestData] = useState({
     url: '',
     method: 'GET',
