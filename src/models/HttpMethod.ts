@@ -12,7 +12,6 @@ export enum HttpMethod {
 
 export namespace HttpMethodHelpers {
   export function getAllValues(): HttpMethod[] {
-    console.log(Object.values(HttpMethod) as HttpMethod[])
     return Object.values(HttpMethod) as HttpMethod[];
   }
 

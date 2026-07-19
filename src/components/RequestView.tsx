@@ -21,24 +21,15 @@ export default function RequestView() {
   const [bodyType, setBodyType] = useState<BodyType>();
   const [selectedGraphQLOperation, setSelectedGraphQLOperation] = useState<string | null>(null);
 
-  const [requestData, setRequestData] = useState({
-    url: '',
-    method: 'GET',
-    headers: [],
-    body: '',
-    queryParams: [],
-    auth: {}
-  });
-
-    useEffect(() => {
+  useEffect(() => {
     const loadData = async () => {
       try {
         const result = await window.api.loadRequestData();
         if (result.success && result.data) {
-          setRequestData(result.data);
           setUrl(result.data.url)
           setMethod(result.data.method)
-          setAuth(result.data.auth)
+          setHeaders(result.data.headers || [])
+          setAuth(ClientCredentialsAuthentication.fromJSON(result.data.auth))
           setBody(result.data.body)
           setBodyType(result.data.bodyType)
           setSelectedGraphQLOperation(result.data.selectedGraphQLOperation)
@@ -57,8 +48,8 @@ export default function RequestView() {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault(); // Prevent browser's default save dialog
               try {
-        updateRequestData()
-        await window.api.saveRequestData(requestData);
+        const data = buildRequestData();
+        await window.api.saveRequestData(data);
       } catch (error) {
         console.error('Failed to save request data:', error);
       }
@@ -70,7 +61,7 @@ export default function RequestView() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [requestData]); // Add requestData to dependencies
+  }, [url, method, headers, auth, body, bodyType, selectedGraphQLOperation]);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -102,18 +93,17 @@ export default function RequestView() {
     }
   };
 
-  function updateRequestData() {
-    const request = {
-    url: url,
-    method: method,
-    headers: headers,
-    body: body,
-    bodyType: bodyType,
-    selectedGraphQLOperation: selectedGraphQLOperation,
-    queryParams: ["a=10"],
-    auth: ClientCredentialsAuthentication.toJSON(auth)
-  }
-  setRequestData(request)
+  function buildRequestData() {
+    return {
+      url: url,
+      method: method,
+      headers: headers,
+      body: body,
+      bodyType: bodyType,
+      selectedGraphQLOperation: selectedGraphQLOperation,
+      queryParams: ["a=10"],
+      auth: ClientCredentialsAuthentication.toJSON(auth)
+    }
   }
 
   function formRequestHeaders(): Map<string, string> {
