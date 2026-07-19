@@ -83,9 +83,7 @@ export default function RequestView() {
         const extracted = extractOperation(body, selectedGraphQLOperation);
         
         if (extracted) {
-          requestBody = `{"query": "${extracted}"}`
-          requestBody = requestBody.replace(/\s+/g, ' ').trim();
-
+          requestBody = JSON.stringify({ query: extracted });
           requestHeaders.set("Content-Type", "application/json")
         }
         // If extraction fails, send the full body as fallback

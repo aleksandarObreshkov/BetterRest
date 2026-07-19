@@ -130,7 +130,9 @@ export function useGraphQLSchema(url: string, auth: Authentication): UseGraphQLS
       const result = await window.api.executeRequest(request.toJSON());
 
       if (result.status && result.status >= 400) {
-        setError(`HTTP ${result.status}: Introspection failed`);
+        const msg = `HTTP ${result.status}: Introspection failed`;
+        console.error('[useGraphQLSchema]', msg, 'body:', result.body);
+        setError(msg);
         setSchema(null);
         return;
       }
@@ -138,12 +140,14 @@ export function useGraphQLSchema(url: string, auth: Authentication): UseGraphQLS
       const parsed = JSON.parse(result.body);
 
       if (parsed.errors) {
+        console.error('[useGraphQLSchema] GraphQL errors:', parsed.errors);
         setError(parsed.errors[0]?.message ?? 'Introspection failed');
         setSchema(null);
         return;
       }
 
       if (!parsed.data) {
+        console.error('[useGraphQLSchema] No data in response:', parsed);
         setError('No schema data returned');
         setSchema(null);
         return;
@@ -152,6 +156,7 @@ export function useGraphQLSchema(url: string, auth: Authentication): UseGraphQLS
       const builtSchema = buildClientSchema(parsed.data);
       setSchema(builtSchema);
     } catch (err: any) {
+      console.error('[useGraphQLSchema] Unexpected error:', err);
       setError(err?.message ?? 'Unknown error');
       setSchema(null);
     } finally {
