@@ -53,7 +53,6 @@ ipcMain.handle("request", async (_, requestJson: any) => {
 })
 
 ipcMain.handle("authRequest", async (_, requestJson: any) => {
-  
   const authRequest = ClientCredentialsAuthentication.fromJSON(requestJson)
   return await fetchToken(authRequest)
 })
