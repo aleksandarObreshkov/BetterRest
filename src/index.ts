@@ -13,38 +13,49 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-// Get the file path for storing data
-function getDataFilePath(filename: string) {
-  const userDataPath = app.getPath('userData');
-  return path.join(userDataPath, filename);
+function getRequestsDir() {
+  return path.join(app.getPath('userData'), 'requests');
 }
 
-// Save request data
-ipcMain.handle('save-request-data', async (event, data) => {
+ipcMain.handle('list-requests', async () => {
+  const dir = getRequestsDir();
+  await fs.mkdir(dir, { recursive: true });
+  const files = await fs.readdir(dir);
+  const results = await Promise.all(
+    files
+      .filter(f => f.endsWith('.json'))
+      .map(async f => {
+        const raw = await fs.readFile(path.join(dir, f), 'utf-8');
+        const parsed = JSON.parse(raw);
+        return { id: parsed.id, name: parsed.name };
+      })
+  );
+  return { success: true, data: results };
+});
+
+ipcMain.handle('save-request', async (_, requestData: any) => {
+  const dir = getRequestsDir();
+  await fs.mkdir(dir, { recursive: true });
+  const filePath = path.join(dir, `${requestData.id}.json`);
+  await fs.writeFile(filePath, JSON.stringify(requestData, null, 2), 'utf-8');
+  return { success: true };
+});
+
+ipcMain.handle('load-request', async (_, id: string) => {
+  const filePath = path.join(getRequestsDir(), `${id}.json`);
   try {
-    const filePath = getDataFilePath('requests.json');
-    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
-    return { success: true };
+    const raw = await fs.readFile(filePath, 'utf-8');
+    return { success: true, data: JSON.parse(raw) };
   } catch (error) {
-    console.error('Error saving request data:', error);
+    if (error.code === 'ENOENT') return { success: true, data: null };
     return { success: false, error: error.message };
   }
 });
 
-// Load request data
-ipcMain.handle('load-request-data', async () => {
-  try {
-    const filePath = getDataFilePath('requests.json');
-    const data = await fs.readFile(filePath, 'utf-8');
-    return { success: true, data: JSON.parse(data) };
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      // File doesn't exist yet, return null
-      return { success: true, data: null };
-    }
-    console.error('Error loading request data:', error);
-    return { success: false, error: error.message };
-  }
+ipcMain.handle('delete-request', async (_, id: string) => {
+  const filePath = path.join(getRequestsDir(), `${id}.json`);
+  await fs.unlink(filePath);
+  return { success: true };
 });
 
 ipcMain.handle("request", async (_, requestJson: any) => {
@@ -77,7 +88,9 @@ const createWindow = (): void => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
+app.on('ready', () => {
+  createWindow();
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits

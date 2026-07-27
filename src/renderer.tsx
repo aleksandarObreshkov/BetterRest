@@ -5,8 +5,10 @@ import { createRoot } from 'react-dom/client';
 export interface IElectronAPI {
   executeRequest: (request: any) => any,
   fetchToken: (authRequest: any) => any,
-  saveRequestData: (data: any) => any,
-  loadRequestData: () => any,
+  listRequests: () => Promise<{ success: boolean; data: { id: string; name: string }[] }>,
+  saveRequest: (data: any) => Promise<{ success: boolean }>,
+  loadRequest: (id: string) => Promise<{ success: boolean; data: any }>,
+  deleteRequest: (id: string) => Promise<{ success: boolean }>,
   introspectGraphQL: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>,
 }
 

@@ -27,8 +27,9 @@ export async function handleHttpRequest(request: Request) {
     const body = await result.text()
 
     return {
-      body: body, 
-      status: result.status
+      body,
+      status: result.status,
+      contentType: result.headers.get('content-type') ?? '',
     }
 }
 
