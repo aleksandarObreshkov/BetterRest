@@ -22,6 +22,7 @@ export class ClientCredentialsAuthentication implements Authentication {
     oauthUrl?: string
     token?: TokenState
     scope?: string
+    enabled: boolean = true
 
     static fromJSON(json: any): ClientCredentialsAuthentication {
         if(typeof json === 'string') {
@@ -33,6 +34,7 @@ export class ClientCredentialsAuthentication implements Authentication {
         auth.oauthUrl = json.oauthUrl;
         auth.token = json.token ? json.token : null;
         auth.scope = json.scope ? json.scope : null;
+        auth.enabled = json.enabled !== false;
         return auth;
     }
 
@@ -43,7 +45,8 @@ export class ClientCredentialsAuthentication implements Authentication {
                 clientSecret: auth.clientSecret,
                 oauthUrl: auth.oauthUrl,
                 token: auth.token,
-                scope: auth.scope
+                scope: auth.scope,
+                enabled: auth.enabled
             }
         }
         return {

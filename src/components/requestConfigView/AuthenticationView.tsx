@@ -15,11 +15,12 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
   const [scope, setScope] = useState('');
+  const [enabled, setEnabled] = useState(true);
   const [tokenState, setTokenState] = useState<TokenState | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [tokenExpiresIn, setTokenExpiresIn] = useState<string>('0m 0s'); // Changed to state
+  const [tokenExpiresIn, setTokenExpiresIn] = useState<string>('0m 0s');
 
   useEffect(() => {
     const clientAuth = auth as ClientCredentialsAuthentication;
@@ -27,6 +28,7 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
     setClientId(clientAuth.clientId || '');
     setClientSecret(clientAuth.clientSecret || '');
     setScope(clientAuth.scope || '');
+    setEnabled(clientAuth.enabled !== false);
   }, [auth]);
   
   async function triggerTokenFetch() {
@@ -34,8 +36,9 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
     authRequest.clientId = clientId
     authRequest.clientSecret = clientSecret
     authRequest.oauthUrl = tokenUrl
+    authRequest.enabled = enabled
     let authRequestJson = JSON.stringify(authRequest)
-    
+
     try {
       let token: TokenState = await window.api.fetchToken(authRequestJson)
       setIsLoading(true)
@@ -55,6 +58,19 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
       setTokenState(null)
     }
     setIsLoading(false)
+  }
+
+  function toggleEnabled() {
+    const newEnabled = !enabled;
+    setEnabled(newEnabled);
+    const authRequest = new ClientCredentialsAuthentication();
+    authRequest.clientId = clientId;
+    authRequest.clientSecret = clientSecret;
+    authRequest.oauthUrl = tokenUrl;
+    authRequest.scope = scope;
+    authRequest.token = tokenState;
+    authRequest.enabled = newEnabled;
+    setAuth(authRequest);
   }
 
   useEffect(() => {
@@ -84,6 +100,20 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
 
   return (
     <div className="space-y-4 p-4 w-full">
+      {/* Enable toggle */}
+      <div className="flex items-center gap-3">
+        <button
+          role="switch"
+          aria-checked={enabled}
+          onClick={toggleEnabled}
+          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${enabled ? 'bg-blue-600' : 'bg-gray-300'}`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition duration-200 ${enabled ? 'translate-x-4' : 'translate-x-0'}`} />
+        </button>
+        <span className="text-sm font-medium text-gray-700">Enable authentication</span>
+      </div>
+
+      <div className={enabled ? '' : 'opacity-40 pointer-events-none'}>
       {/* Error Display */}
       {error && (
         <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded">
@@ -223,6 +253,7 @@ export const AuthenticationView: React.FC<AuthenticationConfigProperties> = ({au
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

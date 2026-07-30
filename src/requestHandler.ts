@@ -10,11 +10,13 @@ export async function handleHttpRequest(request: Request) {
     if(request.auth) {
       if(request.auth instanceof ClientCredentialsAuthentication) {
         let clientCredentialsAuth: ClientCredentialsAuthentication = request.auth
-        if (clientCredentialsAuth.token == null || clientCredentialsAuth.token.isExpired == true) {
-          console.log("Refetching expired token")
-          clientCredentialsAuth.token = await fetchToken(clientCredentialsAuth)
+        if (clientCredentialsAuth.enabled !== false) {
+          if (clientCredentialsAuth.token == null || clientCredentialsAuth.token.isExpired == true) {
+            console.log("Refetching expired token")
+            clientCredentialsAuth.token = await fetchToken(clientCredentialsAuth)
+          }
+          headers.set("Authorization", "Bearer "+clientCredentialsAuth.token.token)
         }
-        headers.set("Authorization", "Bearer "+clientCredentialsAuth.token.token)
       }
     }
 

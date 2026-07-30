@@ -88,7 +88,7 @@ export class Request {
         const request = new Request();
         request._url = json.url;
         request._method = json.method;
-        if(json.auth.type === 'clientCredentials') {
+        if(json.auth?.type === 'clientCredentials') {
             request._auth = ClientCredentialsAuthentication.fromJSON(json.auth)
         }
         request._headers = json.headers;
