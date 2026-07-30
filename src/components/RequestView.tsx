@@ -1,145 +1,111 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import RequestMethodPicker from './RequestMethodPicker';
 import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
 import ResponseView from './ResponseView';
-import RequestConfigView, {RequestHeader} from './requestConfigView/RequestConfigView'
+import RequestConfigView, { RequestHeader } from './requestConfigView/RequestConfigView'
 import { Request } from '../models/Request';
 import { HttpMethod } from '../models/HttpMethod';
-import { Authentication, ClientCredentialsAuthentication } from '../models/Authentication';
+import { Authentication } from '../models/Authentication';
 import { BodyType } from './requestConfigView/BodyView';
 import { extractOperation } from '../utils/graphqlParser';
+import { SavedRequest } from '../models/SavedRequest';
 
-export default function RequestView() {
-  const [response, setResponse] = useState('');
-  const [method, setMethod] = useState("GET");
-  const [loading, setLoading] = useState(false)
-  const [url, setUrl] = useState('')
-  const [headers, setHeaders] = useState<RequestHeader[]>([]);
-  const [auth, setAuth] = useState<Authentication>(new ClientCredentialsAuthentication());
-  const [body, setBody] = useState<string>();
-  const [bodyType, setBodyType] = useState<BodyType>();
-  const [selectedGraphQLOperation, setSelectedGraphQLOperation] = useState<string | null>(null);
+interface RequestViewProps {
+  requestId: string;
+  name: string;
+  url: string;
+  method: string;
+  headers: RequestHeader[];
+  auth: Authentication;
+  body?: string;
+  bodyType?: BodyType;
+  selectedGraphQLOperation?: string | null;
+  onChange: (patch: Partial<SavedRequest>) => void;
+}
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const result = await window.api.loadRequestData();
-        if (result.success && result.data) {
-          setUrl(result.data.url)
-          setMethod(result.data.method)
-          setHeaders(result.data.headers || [])
-          setAuth(ClientCredentialsAuthentication.fromJSON(result.data.auth))
-          setBody(result.data.body)
-          setBodyType(result.data.bodyType)
-          setSelectedGraphQLOperation(result.data.selectedGraphQLOperation)
-        }
-      } catch (error) {
-        console.error('Failed to load request data:', error);
-      }
-    };
-
-    loadData();
-  }, []);
-
-    useEffect(() => {
-    const handleKeyDown = async (e: any) => {
-      // Check for Ctrl+S (Windows/Linux) or Cmd+S (macOS)
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault(); // Prevent browser's default save dialog
-              try {
-        const data = buildRequestData();
-        await window.api.saveRequestData(data);
-      } catch (error) {
-        console.error('Failed to save request data:', error);
-      }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [url, method, headers, auth, body, bodyType, selectedGraphQLOperation]);
+export default function RequestView({
+  requestId,
+  name,
+  url,
+  method,
+  headers,
+  auth,
+  body,
+  bodyType,
+  selectedGraphQLOperation,
+  onChange,
+}: RequestViewProps) {
+  const [responseBody, setResponseBody] = useState('');
+  const [responseContentType, setResponseContentType] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
       const requestHeaders = formRequestHeaders();
 
-      // Extract selected GraphQL operation if applicable
       let requestBody = body;
       if (bodyType === 'graphql' && body && selectedGraphQLOperation !== undefined) {
         const extracted = extractOperation(body, selectedGraphQLOperation);
-        
         if (extracted) {
           requestBody = JSON.stringify({ query: extracted });
-          requestHeaders.set("Content-Type", "application/json")
+          requestHeaders.set("Content-Type", "application/json");
         }
-        // If extraction fails, send the full body as fallback
       }
 
-      let request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody)
-      let requestJson = request.toJSON()
-      const response = await window.api.executeRequest(requestJson)
-
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      setResponse(response.body);
+      const request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody);
+      const result = await window.api.executeRequest(request.toJSON());
+      setResponseBody(result.body);
+      setResponseContentType(result.contentType ?? '');
     } catch (error) {
-      setResponse('Error: ' + error.message);
+      setResponseBody('Error: ' + error.message);
+      setResponseContentType('');
     } finally {
       setLoading(false);
     }
   };
 
-  function buildRequestData() {
-    return {
-      url: url,
-      method: method,
-      headers: headers,
-      body: body,
-      bodyType: bodyType,
-      selectedGraphQLOperation: selectedGraphQLOperation,
-      queryParams: ["a=10"],
-      auth: ClientCredentialsAuthentication.toJSON(auth)
-    }
-  }
-
   function formRequestHeaders(): Map<string, string> {
-    let resultHeaders = new Map<string, string>()
+    const result = new Map<string, string>();
     headers.forEach(header => {
-      if (header.enabled) {
-        resultHeaders.set(header.key, header.value)
-      }
-    })
-
-    return resultHeaders
+      if (header.enabled) result.set(header.key, header.value);
+    });
+    return result;
   }
 
   return (
-    <div className="w-full p-6 flex flex-col gap-4">
+    <div className="w-full p-6 flex flex-col gap-4 overflow-auto">
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={name}
+          onChange={e => onChange({ name: e.target.value })}
+          className="text-lg font-semibold text-gray-800 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-blue-500 focus:outline-none px-1 py-0.5 transition-colors"
+          placeholder="Request name"
+        />
+      </div>
       <div className='flex'>
-        <RequestMethodPicker value={method} onChange={setMethod} />
-        <UrlInput url={url} setUrl={setUrl} loading={loading}></UrlInput>
-        <RequestButton loading={loading} executeRequest={handleSubmit}></RequestButton>
+        <RequestMethodPicker value={method} onChange={v => onChange({ method: v })} />
+        <UrlInput url={url} setUrl={v => onChange({ url: v })} loading={loading} />
+        <RequestButton loading={loading} executeRequest={handleSubmit} />
       </div>
       <div className='flex'>
         <RequestConfigView
           headers={headers}
-          setHeaders={setHeaders}
+          setHeaders={v => onChange({ headers: v })}
           auth={auth}
-          setAuth={setAuth}
+          setAuth={v => onChange({ auth: v })}
           body={body}
-          setBody={setBody}
+          setBody={v => onChange({ body: v })}
           bodyType={bodyType}
-          setBodyType={setBodyType}
+          setBodyType={v => onChange({ bodyType: v })}
           selectedGraphQLOperation={selectedGraphQLOperation}
-          setSelectedGraphQLOperation={setSelectedGraphQLOperation}
+          setSelectedGraphQLOperation={v => onChange({ selectedGraphQLOperation: v })}
           url={url}
-          setUrl={setUrl}
+          setUrl={v => onChange({ url: v })}
         />
-        <ResponseView response={response}></ResponseView>
+        <ResponseView body={responseBody} contentType={responseContentType} />
       </div>
     </div>
   );
