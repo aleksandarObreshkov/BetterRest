@@ -20,7 +20,7 @@ export function blankRequest(id: string): SavedRequest {
     url: '',
     method: 'GET',
     headers: [],
-    auth: { type: 'clientCredentials' },
+    auth: null,
     body: undefined,
     bodyType: undefined,
     selectedGraphQLOperation: null,

@@ -1,5 +1,9 @@
-import { ClientCredentialsAuthentication, TokenResponse, TokenState } from "./models/Authentication"
+import { CertificateAuthentication, ClientCredentialsAuthentication, TokenResponse, TokenState } from "./models/Authentication"
 import { Request } from "./models/Request"
+import * as https from 'https'
+import * as http from 'http'
+import { URL } from 'url'
+import { promises as fs } from 'fs'
 
 export async function handleHttpRequest(request: Request) {
     const headers = new Headers()
@@ -17,6 +21,11 @@ export async function handleHttpRequest(request: Request) {
           }
           headers.set("Authorization", "Bearer "+clientCredentialsAuth.token.token)
         }
+      } else if (request.auth instanceof CertificateAuthentication) {
+        const certAuth: CertificateAuthentication = request.auth
+        if (certAuth.enabled !== false && certAuth.certPath && certAuth.keyPath) {
+          return await handleHttpRequestWithCert(request, certAuth, headers)
+        }
       }
     }
 
@@ -33,6 +42,49 @@ export async function handleHttpRequest(request: Request) {
       status: result.status,
       contentType: result.headers.get('content-type') ?? '',
     }
+}
+
+async function handleHttpRequestWithCert(request: Request, certAuth: CertificateAuthentication, headers: Headers): Promise<{ body: string; status: number; contentType: string }> {
+  const [certPem, keyPem] = await Promise.all([
+    fs.readFile(certAuth.certPath, 'utf-8'),
+    fs.readFile(certAuth.keyPath, 'utf-8'),
+  ])
+
+  return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(request.url)
+    const headerObj: Record<string, string> = {}
+    headers.forEach((value, key) => { headerObj[key] = value })
+
+    const options: https.RequestOptions = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: request.method,
+      headers: headerObj,
+      cert: certPem,
+      key: keyPem,
+    }
+
+    const transport = parsedUrl.protocol === 'https:' ? https : http
+    const req = (transport as typeof https).request(options, (res) => {
+      let data = ''
+      res.on('data', (chunk) => { data += chunk })
+      res.on('end', () => {
+        resolve({
+          body: data,
+          status: res.statusCode ?? 0,
+          contentType: (res.headers['content-type'] as string) ?? '',
+        })
+      })
+    })
+
+    req.on('error', reject)
+
+    if (request.body) {
+      req.write(request.body)
+    }
+    req.end()
+  })
 }
 
 

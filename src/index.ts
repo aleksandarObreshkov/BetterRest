@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { fetchToken, handleHttpRequest } from './requestHandler';
 import { Request } from './models/Request';
 import { ClientCredentialsAuthentication } from './models/Authentication';
@@ -66,6 +66,11 @@ ipcMain.handle("request", async (_, requestJson: any) => {
 ipcMain.handle("authRequest", async (_, requestJson: any) => {
   const authRequest = ClientCredentialsAuthentication.fromJSON(requestJson)
   return await fetchToken(authRequest)
+})
+
+ipcMain.handle('pick-file', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openFile'] })
+  return result.canceled ? null : result.filePaths[0]
 })
 
 const createWindow = (): void => {

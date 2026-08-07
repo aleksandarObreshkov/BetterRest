@@ -10,4 +10,5 @@ contextBridge.exposeInMainWorld('api', {
   deleteRequest: (id: string) => ipcRenderer.invoke('delete-request', id),
 
   introspectGraphQL: (url: string) => ipcRenderer.invoke('graphql-introspect', url),
+  pickFile: () => ipcRenderer.invoke('pick-file'),
 });

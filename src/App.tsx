@@ -3,7 +3,7 @@ import RequestView from './components/RequestView';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
 import { SavedRequest, blankRequest } from './models/SavedRequest';
-import { ClientCredentialsAuthentication } from './models/Authentication';
+import { authFromJSON } from './models/Authentication';
 
 export default function App() {
   const [requestList, setRequestList] = useState<{ id: string; name: string }[]>([]);
@@ -50,7 +50,7 @@ export default function App() {
     if (!result.success || !result.data) return;
     const data: SavedRequest = {
       ...result.data,
-      auth: ClientCredentialsAuthentication.fromJSON(result.data.auth),
+      auth: authFromJSON(result.data.auth),
     };
     setTabData(prev => ({ ...prev, [id]: data }));
     setSavedData(prev => ({ ...prev, [id]: { ...data } }));

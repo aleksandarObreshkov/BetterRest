@@ -10,6 +10,7 @@ export interface IElectronAPI {
   loadRequest: (id: string) => Promise<{ success: boolean; data: any }>,
   deleteRequest: (id: string) => Promise<{ success: boolean }>,
   introspectGraphQL: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>,
+  pickFile: () => Promise<string | null>,
 }
 
 declare global {

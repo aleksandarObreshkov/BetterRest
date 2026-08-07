@@ -1,4 +1,4 @@
-import { Authentication, ClientCredentialsAuthentication } from "./Authentication";
+import { Authentication, CertificateAuthentication, ClientCredentialsAuthentication } from "./Authentication";
 import { HttpMethod } from "./HttpMethod"
 
 export class Request {
@@ -90,6 +90,8 @@ export class Request {
         request._method = json.method;
         if(json.auth?.type === 'clientCredentials') {
             request._auth = ClientCredentialsAuthentication.fromJSON(json.auth)
+        } else if (json.auth?.type === 'certificate') {
+            request._auth = CertificateAuthentication.fromJSON(json.auth)
         }
         request._headers = json.headers;
         request._parameters = json.parameters ? new Map(json.parameters) : undefined;
