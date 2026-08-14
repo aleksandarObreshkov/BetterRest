@@ -38,6 +38,7 @@ export default function RequestView({
 }: RequestViewProps) {
   const [responseBody, setResponseBody] = useState('');
   const [responseContentType, setResponseContentType] = useState('');
+  const [responseHeaders, setResponseHeaders] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
@@ -58,9 +59,11 @@ export default function RequestView({
       const result = await window.api.executeRequest(request.toJSON());
       setResponseBody(result.body);
       setResponseContentType(result.contentType ?? '');
+      setResponseHeaders(result.headers ?? {});
     } catch (error) {
       setResponseBody('Error: ' + error.message);
       setResponseContentType('');
+      setResponseHeaders({});
     } finally {
       setLoading(false);
     }
@@ -105,7 +108,7 @@ export default function RequestView({
           url={url}
           setUrl={v => onChange({ url: v })}
         />
-        <ResponseView body={responseBody} contentType={responseContentType} />
+        <ResponseView body={responseBody} contentType={responseContentType} headers={responseHeaders} />
       </div>
     </div>
   );

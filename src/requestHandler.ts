@@ -37,14 +37,18 @@ export async function handleHttpRequest(request: Request) {
 
     const body = await result.text()
 
+    const responseHeaders: Record<string, string> = {}
+    result.headers.forEach((value, key) => { responseHeaders[key] = value })
+
     return {
       body,
       status: result.status,
       contentType: result.headers.get('content-type') ?? '',
+      headers: responseHeaders,
     }
 }
 
-async function handleHttpRequestWithCert(request: Request, certAuth: CertificateAuthentication, headers: Headers): Promise<{ body: string; status: number; contentType: string }> {
+async function handleHttpRequestWithCert(request: Request, certAuth: CertificateAuthentication, headers: Headers): Promise<{ body: string; status: number; contentType: string; headers: Record<string, string> }> {
   const [certPem, keyPem] = await Promise.all([
     fs.readFile(certAuth.certPath, 'utf-8'),
     fs.readFile(certAuth.keyPath, 'utf-8'),
@@ -70,10 +74,15 @@ async function handleHttpRequestWithCert(request: Request, certAuth: Certificate
       let data = ''
       res.on('data', (chunk) => { data += chunk })
       res.on('end', () => {
+        const responseHeaders: Record<string, string> = {}
+        Object.entries(res.headers).forEach(([k, v]) => {
+          if (v !== undefined) responseHeaders[k] = Array.isArray(v) ? v.join(', ') : v
+        })
         resolve({
           body: data,
           status: res.statusCode ?? 0,
           contentType: (res.headers['content-type'] as string) ?? '',
+          headers: responseHeaders,
         })
       })
     })
