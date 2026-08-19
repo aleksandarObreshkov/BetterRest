@@ -62,6 +62,7 @@
     "@tailwindcss/postcss": "^4.1.17",
     "@tailwindplus/elements": "^1.0.19",
     "@types/graphql": "^14.2.3",
+    "cm6-graphql": "^0.2.1",
     "electron-squirrel-startup": "^1.0.1",
     "graphql": "^16.13.1",
     "graphql-language-service": "^5.5.0",

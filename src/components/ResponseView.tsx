@@ -1,12 +1,30 @@
 import styles from './ResponseView.module.css'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { EditorView } from '@codemirror/view'
+import { EditorState } from '@codemirror/state'
+import { json } from '@codemirror/lang-json'
+import { syntaxHighlighting } from '@codemirror/language'
+import { codeHighlightStyle } from '../utils/cmHighlight'
 
 interface ResponseProps {
   body: string;
   contentType: string;
   headers: Record<string, string>;
 }
+
+const responseEditorTheme = EditorView.theme({
+  '&': {
+    fontSize: '13px',
+    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+    backgroundColor: 'transparent',
+  },
+  '.cm-scroller': { lineHeight: '1.6', overflow: 'visible' },
+  '.cm-content': { padding: '0' },
+  '.cm-focused': { outline: 'none' },
+  '.cm-line': { paddingLeft: '0' },
+  '.cm-selectionBackground': { background: '#b3d4fd' },
+})
 
 function formatBody(body: string, contentType: string): string {
   if (!body) return '';
@@ -60,6 +78,41 @@ export default function ResponseView({ body, contentType, headers }: ResponsePro
   const headerEntries = Object.entries(headers);
   const hasHeaders = headerEntries.length > 0;
 
+  const ct = contentType.toLowerCase();
+  const isJson = ct.includes('application/json') || ct.includes('+json');
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const viewRef = useRef<EditorView | null>(null);
+
+  useEffect(() => {
+    if (!isJson || !formatted) {
+      viewRef.current?.destroy();
+      viewRef.current = null;
+      return;
+    }
+    if (!editorRef.current) return;
+
+    viewRef.current?.destroy();
+
+    const state = EditorState.create({
+      doc: formatted,
+      extensions: [
+        EditorState.readOnly.of(true),
+        EditorView.editable.of(false),
+        json(),
+        syntaxHighlighting(codeHighlightStyle),
+        responseEditorTheme,
+      ],
+    });
+
+    viewRef.current = new EditorView({ state, parent: editorRef.current });
+
+    return () => {
+      viewRef.current?.destroy();
+      viewRef.current = null;
+    };
+  }, [isJson, formatted]);
+
   return (
     <div className={styles.responseArea}>
       {hasHeaders && (
@@ -92,10 +145,13 @@ export default function ResponseView({ body, contentType, headers }: ResponsePro
       )}
 
       <div className={styles.bodyPanel}>
-        {formatted
-          ? <pre className={styles.bodyPre}>{formatted}</pre>
-          : <span className="text-gray-400 text-sm">No response yet</span>
-        }
+        {!formatted ? (
+          <span className="text-gray-400 text-sm">No response yet</span>
+        ) : isJson ? (
+          <div ref={editorRef} />
+        ) : (
+          <pre className={styles.bodyPre}>{formatted}</pre>
+        )}
       </div>
     </div>
   );

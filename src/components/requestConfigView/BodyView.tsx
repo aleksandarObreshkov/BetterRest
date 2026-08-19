@@ -9,12 +9,14 @@ import { EditorView, keymap, placeholder as cmPlaceholder } from '@codemirror/vi
 import { EditorState, Extension } from '@codemirror/state';
 import { json } from '@codemirror/lang-json';
 import { defaultKeymap, indentWithTab } from '@codemirror/commands';
-import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { bracketMatching, indentOnInput, syntaxHighlighting } from '@codemirror/language';
 import { autocompletion, closeBrackets, closeBracketsKeymap, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { lintKeymap, linter, Diagnostic } from '@codemirror/lint';
 
 import { GraphQLSchema } from 'graphql';
 import { getAutocompleteSuggestions, getDiagnostics, Position } from 'graphql-language-service';
+import { graphql as graphqlLanguage } from 'cm6-graphql';
+import { codeHighlightStyle } from '../../utils/cmHighlight';
 
 // ---------------------------------------------------------------------------
 // GraphQL CodeMirror extensions
@@ -249,7 +251,7 @@ export function BodyView({
       indentOnInput(),
       bracketMatching(),
       closeBrackets(),
-      syntaxHighlighting(defaultHighlightStyle),
+      syntaxHighlighting(codeHighlightStyle),
       cmPlaceholder(placeholders[bodyType]),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
@@ -260,6 +262,7 @@ export function BodyView({
       ...(bodyType === 'json'
         ? [json(), autocompletion()]
         : [
+            graphqlLanguage(),
             // Schema-aware autocomplete; gracefully no-ops when schema is null
             autocompletion({ override: [graphqlCompletionSource(schema)] }),
             // Inline diagnostics; shows syntax errors even without a schema,
