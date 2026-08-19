@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import RequestMethodPicker from './RequestMethodPicker';
 import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
@@ -40,6 +40,8 @@ export default function RequestView({
   const [responseContentType, setResponseContentType] = useState('');
   const [responseHeaders, setResponseHeaders] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [splitPercent, setSplitPercent] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -77,9 +79,27 @@ export default function RequestView({
     return result;
   }
 
+  function startDrag(e: React.MouseEvent) {
+    e.preventDefault();
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+
+    function onMove(e: MouseEvent) {
+      const pct = ((e.clientX - rect.left) / rect.width) * 100;
+      setSplitPercent(Math.min(75, Math.max(25, pct)));
+    }
+    function onUp() {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
   return (
-    <div className="w-full p-6 flex flex-col gap-4 overflow-auto">
-      <div className="flex items-center gap-2">
+    <div className="h-full p-6 flex flex-col gap-4 overflow-hidden">
+      <div className="flex-shrink-0 flex items-center gap-2">
         <input
           type="text"
           value={name}
@@ -88,27 +108,35 @@ export default function RequestView({
           placeholder="Request name"
         />
       </div>
-      <div className='flex'>
+      <div className="flex-shrink-0 flex">
         <RequestMethodPicker value={method} onChange={v => onChange({ method: v })} />
         <UrlInput url={url} setUrl={v => onChange({ url: v })} loading={loading} />
         <RequestButton loading={loading} executeRequest={handleSubmit} />
       </div>
-      <div className='flex'>
-        <RequestConfigView
-          headers={headers}
-          setHeaders={v => onChange({ headers: v })}
-          auth={auth}
-          setAuth={v => onChange({ auth: v })}
-          body={body}
-          setBody={v => onChange({ body: v })}
-          bodyType={bodyType}
-          setBodyType={v => onChange({ bodyType: v })}
-          selectedGraphQLOperation={selectedGraphQLOperation}
-          setSelectedGraphQLOperation={v => onChange({ selectedGraphQLOperation: v })}
-          url={url}
-          setUrl={v => onChange({ url: v })}
+      <div className="flex-1 min-h-0 flex overflow-hidden" ref={containerRef}>
+        <div style={{ width: `${splitPercent}%` }} className="h-full min-w-0 overflow-hidden p-0.5">
+          <RequestConfigView
+            headers={headers}
+            setHeaders={v => onChange({ headers: v })}
+            auth={auth}
+            setAuth={v => onChange({ auth: v })}
+            body={body}
+            setBody={v => onChange({ body: v })}
+            bodyType={bodyType}
+            setBodyType={v => onChange({ bodyType: v })}
+            selectedGraphQLOperation={selectedGraphQLOperation}
+            setSelectedGraphQLOperation={v => onChange({ selectedGraphQLOperation: v })}
+            url={url}
+            setUrl={v => onChange({ url: v })}
+          />
+        </div>
+        <div
+          className="w-1 flex-shrink-0 bg-transparent hover:bg-blue-400 cursor-col-resize transition-colors"
+          onMouseDown={startDrag}
         />
-        <ResponseView body={responseBody} contentType={responseContentType} headers={responseHeaders} />
+        <div className="flex-1 h-full min-w-0 overflow-hidden p-0.5">
+          <ResponseView body={responseBody} contentType={responseContentType} headers={responseHeaders} />
+        </div>
       </div>
     </div>
   );

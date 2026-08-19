@@ -47,8 +47,8 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, b
 
   return (
     <div className={`${styles.rootConfig}`}>
-      {/* Tabs */}
-      <div className="border-b border-gray-200">
+      {/* Tab bar — fixed height */}
+      <div className="border-b border-gray-200 flex-shrink-0">
         <div className='flex'>
           {tabs.map(tab => (
             <button
@@ -64,25 +64,22 @@ const RequestConfigView = ({headers, setHeaders, auth, setAuth, body, setBody, b
             </button>
           ))}
         </div>
+      </div>
 
-        <div className='flex'>
-          {(() => {
-            switch (activeTab) {
-              case 'headers':
-                return (<HeadersView headers={headers} setHeaders={setHeaders} />)
-
-              case 'authentication':
-                return (<AuthenticationView auth={auth} setAuth={setAuth} />)
-
-              case 'body':
-                return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} selectedGraphQLOperation={selectedGraphQLOperation} setSelectedGraphQLOperation={setSelectedGraphQLOperation} url={url} setUrl={setUrl} auth={auth}/>)
-
-              default:
-                return null;
-            }
-          })()}
-        </div>
-
+      {/* Tab content — scrollable */}
+      <div className='flex-1 min-h-0 overflow-auto'>
+        {(() => {
+          switch (activeTab) {
+            case 'headers':
+              return (<HeadersView headers={headers} setHeaders={setHeaders} />)
+            case 'authentication':
+              return (<AuthenticationView auth={auth} setAuth={setAuth} />)
+            case 'body':
+              return (<BodyView body={body} setBody={setBody} bodyType={bodyType} setBodyType={setBodyType} selectedGraphQLOperation={selectedGraphQLOperation} setSelectedGraphQLOperation={setSelectedGraphQLOperation} url={url} setUrl={setUrl} auth={auth}/>)
+            default:
+              return null;
+          }
+        })()}
       </div>
     </div>
   );

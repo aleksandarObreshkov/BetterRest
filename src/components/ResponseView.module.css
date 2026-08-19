@@ -1,42 +1,29 @@
 @reference "tailwindcss";
 
 .responseArea {
-    @apply flex flex-row flex-2 h-full w-full mt-4 gap-2;
-    margin: 2px;
+    @apply flex flex-col w-full h-full;
+}
+
+/* Collapsible headers section */
+.headersSection {
+    @apply flex-shrink-0 bg-gray-100 border border-gray-300 rounded-lg mb-2 overflow-hidden;
+}
+
+.headersToggle {
+    @apply flex items-center gap-2 w-full px-3 py-2 text-sm font-medium text-gray-600
+           hover:text-gray-900 hover:bg-gray-200 transition-colors text-left;
+}
+
+.headersTableWrapper {
+    @apply p-2 text-xs font-mono border-t border-gray-200 overflow-y-auto;
+    max-height: 220px;
 }
 
 /* Body panel */
 .bodyPanel {
-    @apply flex-1 min-w-0 overflow-auto p-4 bg-gray-100 border rounded-lg border-blue-500;
+    @apply flex-1 min-h-0 overflow-auto p-4 bg-gray-100 border rounded-lg border-blue-500;
 }
 
 .bodyPre {
     @apply text-sm font-mono whitespace-pre-wrap break-words;
-}
-
-/* Headers panel — expanded */
-.headersPanel {
-    @apply flex flex-col flex-shrink-0 bg-gray-100 border rounded-lg border-gray-300 overflow-hidden;
-    width: 260px;
-}
-
-.headersPanelTitle {
-    @apply flex items-center justify-between px-3 py-2 border-b border-gray-200 flex-shrink-0;
-}
-
-.headersTableWrapper {
-    @apply flex-1 overflow-y-auto p-2 text-xs font-mono;
-}
-
-/* Headers panel — collapsed strip */
-.headersCollapsed {
-    @apply flex flex-col items-center flex-shrink-0 bg-gray-100 border rounded-lg border-gray-300
-           hover:bg-gray-200 transition-colors pt-3 pb-3 gap-2;
-    width: 28px;
-}
-
-.headersCollapsedLabel {
-    @apply text-xs font-medium text-gray-400;
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
 }

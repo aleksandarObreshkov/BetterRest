@@ -1,6 +1,6 @@
 import styles from './ResponseView.module.css'
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 
 interface ResponseProps {
   body: string;
@@ -56,36 +56,25 @@ function formatXml(xml: string): string {
 
 export default function ResponseView({ body, contentType, headers }: ResponseProps) {
   const formatted = formatBody(body, contentType);
-  const [headersOpen, setHeadersOpen] = useState(true);
+  const [headersExpanded, setHeadersExpanded] = useState(false);
   const headerEntries = Object.entries(headers);
   const hasHeaders = headerEntries.length > 0;
 
   return (
     <div className={styles.responseArea}>
-      {/* Body panel */}
-      <div className={styles.bodyPanel}>
-        {formatted
-          ? <pre className={styles.bodyPre}>{formatted}</pre>
-          : <span className="text-gray-400 text-sm">No response yet</span>
-        }
-      </div>
-
-      {/* Headers side panel */}
       {hasHeaders && (
-        headersOpen ? (
-          <div className={styles.headersPanel}>
-            <div className={styles.headersPanelTitle}>
-              <span className="text-xs font-semibold text-gray-600">
-                Headers ({headerEntries.length})
-              </span>
-              <button
-                onClick={() => setHeadersOpen(false)}
-                className="text-gray-400 hover:text-gray-700 transition-colors"
-                title="Collapse headers"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
+        <div className={styles.headersSection}>
+          <button
+            onClick={() => setHeadersExpanded(v => !v)}
+            className={styles.headersToggle}
+          >
+            {headersExpanded
+              ? <ChevronDown className="w-4 h-4 flex-shrink-0" />
+              : <ChevronRight className="w-4 h-4 flex-shrink-0" />
+            }
+            <span>Response Headers ({headerEntries.length})</span>
+          </button>
+          {headersExpanded && (
             <div className={styles.headersTableWrapper}>
               <table className="w-full border-collapse">
                 <tbody>
@@ -98,20 +87,16 @@ export default function ResponseView({ body, contentType, headers }: ResponsePro
                 </tbody>
               </table>
             </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setHeadersOpen(true)}
-            className={styles.headersCollapsed}
-            title="Expand headers"
-          >
-            <ChevronLeft className="w-4 h-4 text-gray-400" />
-            <span className={styles.headersCollapsedLabel}>
-              Headers
-            </span>
-          </button>
-        )
+          )}
+        </div>
       )}
+
+      <div className={styles.bodyPanel}>
+        {formatted
+          ? <pre className={styles.bodyPre}>{formatted}</pre>
+          : <span className="text-gray-400 text-sm">No response yet</span>
+        }
+      </div>
     </div>
   );
 }

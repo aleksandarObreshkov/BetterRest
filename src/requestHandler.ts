@@ -4,6 +4,7 @@ import * as https from 'https'
 import * as http from 'http'
 import { URL } from 'url'
 import { promises as fs } from 'fs'
+import { net } from 'electron'
 
 export async function handleHttpRequest(request: Request) {
     const headers = new Headers()
@@ -29,7 +30,7 @@ export async function handleHttpRequest(request: Request) {
       }
     }
 
-    const result = await fetch(request.url, {
+    const result = await net.fetch(request.url, {
       method: request.method,
       headers: headers,
       body: request.body
@@ -111,7 +112,7 @@ export async function fetchToken(clientCredentialsRequest: ClientCredentialsAuth
     }
 
     // Make token request
-    const response = await fetch(clientCredentialsRequest.oauthUrl, {
+    const response = await net.fetch(clientCredentialsRequest.oauthUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
