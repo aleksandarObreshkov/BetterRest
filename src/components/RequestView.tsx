@@ -21,6 +21,7 @@ interface RequestViewProps {
   body?: string;
   bodyType?: BodyType;
   selectedGraphQLOperation?: string | null;
+  graphqlVariables?: string;
   onChange: (patch: Partial<SavedRequest>) => void;
 }
 
@@ -34,6 +35,7 @@ export default function RequestView({
   body,
   bodyType,
   selectedGraphQLOperation,
+  graphqlVariables,
   onChange,
 }: RequestViewProps) {
   const [responseBody, setResponseBody] = useState('');
@@ -52,7 +54,11 @@ export default function RequestView({
       if (bodyType === 'graphql' && body && selectedGraphQLOperation !== undefined) {
         const extracted = extractOperation(body, selectedGraphQLOperation);
         if (extracted) {
-          requestBody = JSON.stringify({ query: extracted });
+          let variables: Record<string, unknown> | undefined;
+          try {
+            if (graphqlVariables?.trim()) variables = JSON.parse(graphqlVariables);
+          } catch { /* ignore malformed variables */ }
+          requestBody = JSON.stringify({ query: extracted, ...(variables ? { variables } : {}) });
           requestHeaders.set("Content-Type", "application/json");
         }
       }
@@ -126,6 +132,8 @@ export default function RequestView({
             setBodyType={v => onChange({ bodyType: v })}
             selectedGraphQLOperation={selectedGraphQLOperation}
             setSelectedGraphQLOperation={v => onChange({ selectedGraphQLOperation: v })}
+            graphqlVariables={graphqlVariables}
+            setGraphqlVariables={v => onChange({ graphqlVariables: v })}
             url={url}
             setUrl={v => onChange({ url: v })}
           />

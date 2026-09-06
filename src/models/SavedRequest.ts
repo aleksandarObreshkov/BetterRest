@@ -11,6 +11,7 @@ export interface SavedRequest {
   body?: string;
   bodyType?: BodyType;
   selectedGraphQLOperation?: string | null;
+  graphqlVariables?: string;
 }
 
 export function blankRequest(id: string): SavedRequest {
@@ -24,5 +25,6 @@ export function blankRequest(id: string): SavedRequest {
     body: undefined,
     bodyType: undefined,
     selectedGraphQLOperation: null,
+    graphqlVariables: undefined,
   };
 }

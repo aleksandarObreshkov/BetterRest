@@ -129,6 +129,7 @@ export default function App() {
             body={activeRequest.body}
             bodyType={activeRequest.bodyType}
             selectedGraphQLOperation={activeRequest.selectedGraphQLOperation}
+            graphqlVariables={activeRequest.graphqlVariables}
             onChange={patch => handleTabChange(activeTabId, patch)}
           />
         ) : (

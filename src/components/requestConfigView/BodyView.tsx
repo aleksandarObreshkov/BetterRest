@@ -223,12 +223,18 @@ export function BodyView({
   setBodyType,
   selectedGraphQLOperation,
   setSelectedGraphQLOperation,
+  graphqlVariables,
+  setGraphqlVariables,
   url,
   auth,
 }: BodyViewProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef   = useRef<EditorView | null>(null);
   const internalChangeRef = useRef(false);
+
+  const variablesEditorRef = useRef<HTMLDivElement>(null);
+  const variablesViewRef   = useRef<EditorView | null>(null);
+  const variablesInternalChangeRef = useRef(false);
 
   const [operations, setOperations] = useState<GraphQLOperation[]>([]);
   const [parseErrors, setParseErrors] = useState<string[]>([]);
@@ -302,6 +308,64 @@ export function BodyView({
       });
     }
   }, [body]);
+
+  // Initialise / destroy the variables editor when bodyType changes
+  useEffect(() => {
+    if (bodyType !== 'graphql') {
+      variablesViewRef.current?.destroy();
+      variablesViewRef.current = null;
+      return;
+    }
+    if (!variablesEditorRef.current) return;
+
+    variablesViewRef.current?.destroy();
+
+    const varExtensions: Extension[] = [
+      editorTheme,
+      smartEnterKeymap,
+      keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...lintKeymap, indentWithTab]),
+      EditorState.tabSize.of(2),
+      indentOnInput(),
+      bracketMatching(),
+      closeBrackets(),
+      syntaxHighlighting(codeHighlightStyle),
+      cmPlaceholder('{\n  "variableName": "value"\n}'),
+      json(),
+      autocompletion(),
+      EditorView.updateListener.of((update) => {
+        if (update.docChanged) {
+          variablesInternalChangeRef.current = true;
+          setGraphqlVariables?.(update.state.doc.toString());
+        }
+      }),
+    ];
+
+    const varState = EditorState.create({ doc: graphqlVariables ?? '', extensions: varExtensions });
+    variablesViewRef.current = new EditorView({ state: varState, parent: variablesEditorRef.current });
+
+    return () => {
+      variablesViewRef.current?.destroy();
+      variablesViewRef.current = null;
+    };
+  }, [bodyType]);
+
+  // Sync external graphqlVariables prop into the variables editor without resetting cursor
+  useEffect(() => {
+    const view = variablesViewRef.current;
+    if (!view) return;
+
+    if (variablesInternalChangeRef.current) {
+      variablesInternalChangeRef.current = false;
+      return;
+    }
+
+    const current = view.state.doc.toString();
+    if (current !== (graphqlVariables ?? '')) {
+      view.dispatch({
+        changes: { from: 0, to: current.length, insert: graphqlVariables ?? '' },
+      });
+    }
+  }, [graphqlVariables]);
 
   // Parse GraphQL operations when body or bodyType changes
   useEffect(() => {
@@ -429,6 +493,17 @@ export function BodyView({
           ref={editorRef}
           className="border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
         />
+
+        {/* Variables Editor — GraphQL only */}
+        {bodyType === 'graphql' && (
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-gray-700">Variables</label>
+            <div
+              ref={variablesEditorRef}
+              className="border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
+            />
+          </div>
+        )}
 
       </div>
     </div>
