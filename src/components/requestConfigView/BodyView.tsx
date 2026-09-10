@@ -175,7 +175,6 @@ const editorTheme = EditorView.theme({
     fontSize: '13px',
     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     height: '100%',
-    minHeight: '16rem',
   },
   '.cm-scroller': {
     overflow: 'auto',
@@ -415,8 +414,10 @@ export function BodyView({
   };
 
   return (
-    <div className="space-y-2 w-full">
-      <div className="flex-1 overflow-auto p-4 space-y-3">
+    <div className="flex flex-col h-full w-full">
+
+      {/* Controls — shrink-wrap at top */}
+      <div className="flex-shrink-0 flex flex-col gap-3 p-4 pb-2">
 
         {/* Body Type Dropdown */}
         <div className="flex items-center gap-3">
@@ -488,24 +489,27 @@ export function BodyView({
           </>
         )}
 
-        {/* Code Editor */}
+      </div>
+
+      {/* Code Editor — fills remaining space */}
+      <div className="flex-1 min-h-0 px-4 pb-2">
         <div
           ref={editorRef}
-          className="border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
+          className="h-full border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
         />
-
-        {/* Variables Editor — GraphQL only */}
-        {bodyType === 'graphql' && (
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">Variables</label>
-            <div
-              ref={variablesEditorRef}
-              className="border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
-            />
-          </div>
-        )}
-
       </div>
+
+      {/* Variables Editor — pinned at bottom, GraphQL only */}
+      {bodyType === 'graphql' && (
+        <div className="flex-shrink-0 px-4 pb-4 space-y-1">
+          <label className="text-sm font-medium text-gray-700">Variables</label>
+          <div
+            ref={variablesEditorRef}
+            className="h-28 border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
+          />
+        </div>
+      )}
+
     </div>
   );
 }
