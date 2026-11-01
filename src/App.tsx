@@ -3,10 +3,11 @@ import RequestView from './components/RequestView';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
 import { SavedRequest, blankRequest } from './models/SavedRequest';
+import { CollectionNode } from './models/Collection';
 import { authFromJSON } from './models/Authentication';
 
 export default function App() {
-  const [requestList, setRequestList] = useState<{ id: string; name: string }[]>([]);
+  const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [openTabIds, setOpenTabIds] = useState<string[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tabData, setTabData] = useState<Record<string, SavedRequest>>({});
@@ -16,8 +17,8 @@ export default function App() {
     JSON.stringify(tabData[id]) !== JSON.stringify(savedData[id]);
 
   useEffect(() => {
-    window.api.listRequests().then(result => {
-      if (result.success) setRequestList(result.data);
+    window.api.listCollections().then(result => {
+      if (result.success) setCollections(result.data);
     });
   }, []);
 
@@ -30,23 +31,28 @@ export default function App() {
         if (!data) return;
         await window.api.saveRequest(data);
         setSavedData(prev => ({ ...prev, [activeTabId]: { ...data } }));
-        setRequestList(prev =>
-          prev.some(r => r.id === data.id)
-            ? prev.map(r => r.id === data.id ? { id: data.id, name: data.name } : r)
-            : [...prev, { id: data.id, name: data.name }]
-        );
+        setCollections(prev => prev.map(c =>
+          c.id === data.collectionId
+            ? {
+                ...c,
+                requests: c.requests.some(r => r.id === data.id)
+                  ? c.requests.map(r => r.id === data.id ? { id: data.id, name: data.name, collectionId: data.collectionId } : r)
+                  : [...c.requests, { id: data.id, name: data.name, collectionId: data.collectionId }],
+              }
+            : c
+        ));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activeTabId, tabData]);
 
-  const handleOpenRequest = useCallback(async (id: string) => {
+  const handleOpenRequest = useCallback(async (id: string, collectionId: string) => {
     if (openTabIds.includes(id)) {
       setActiveTabId(id);
       return;
     }
-    const result = await window.api.loadRequest(id);
+    const result = await window.api.loadRequest(id, collectionId);
     if (!result.success || !result.data) return;
     const data: SavedRequest = {
       ...result.data,
@@ -58,13 +64,57 @@ export default function App() {
     setActiveTabId(id);
   }, [openTabIds]);
 
-  const handleNewRequest = useCallback(() => {
+  const handleNewRequest = useCallback((collectionId: string) => {
     const id = crypto.randomUUID();
-    const req = blankRequest(id);
+    const req = blankRequest(id, collectionId);
     setTabData(prev => ({ ...prev, [id]: req }));
     setSavedData(prev => ({ ...prev, [id]: { ...req } }));
     setOpenTabIds(prev => [...prev, id]);
     setActiveTabId(id);
+  }, []);
+
+  const handleNewCollection = useCallback(async (name: string) => {
+    await window.api.createCollection(name);
+    setCollections(prev => [...prev, { id: name, requests: [] }]);
+  }, []);
+
+  const handleRenameCollection = useCallback(async (oldName: string, newName: string) => {
+    await window.api.renameCollection(oldName, newName);
+    setCollections(prev => prev.map(c =>
+      c.id === oldName
+        ? { ...c, id: newName, requests: c.requests.map(r => ({ ...r, collectionId: newName })) }
+        : c
+    ));
+    setTabData(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(id => {
+        if (updated[id].collectionId === oldName) {
+          updated[id] = { ...updated[id], collectionId: newName };
+        }
+      });
+      return updated;
+    });
+  }, []);
+
+  const handleDeleteCollection = useCallback(async (name: string) => {
+    await window.api.deleteCollection(name);
+    setCollections(prev => prev.filter(c => c.id !== name));
+  }, []);
+
+  const handleMoveRequest = useCallback(async (id: string, fromCollectionId: string, toCollectionId: string) => {
+    await window.api.moveRequest(id, fromCollectionId, toCollectionId);
+    setCollections(prev => {
+      const request = prev.find(c => c.id === fromCollectionId)?.requests.find(r => r.id === id);
+      if (!request) return prev;
+      const moved = { ...request, collectionId: toCollectionId };
+      return prev.map(c => {
+        if (c.id === fromCollectionId) return { ...c, requests: c.requests.filter(r => r.id !== id) };
+        if (c.id === toCollectionId) return { ...c, requests: [...c.requests, moved] };
+        return c;
+      });
+    });
+    setTabData(prev => prev[id] ? { ...prev, [id]: { ...prev[id], collectionId: toCollectionId } } : prev);
+    setSavedData(prev => prev[id] ? { ...prev, [id]: { ...prev[id], collectionId: toCollectionId } } : prev);
   }, []);
 
   const handleCloseTab = useCallback((id: string) => {
@@ -88,9 +138,12 @@ export default function App() {
     setTabData(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }));
   }, []);
 
-  const handleRename = useCallback((id: string, name: string) => {
+  const handleRenameRequest = useCallback((id: string, name: string) => {
     setTabData(prev => ({ ...prev, [id]: { ...prev[id], name } }));
-    setRequestList(prev => prev.map(r => r.id === id ? { ...r, name } : r));
+    setCollections(prev => prev.map(c => ({
+      ...c,
+      requests: c.requests.map(r => r.id === id ? { ...r, name } : r),
+    })));
   }, []);
 
   const activeRequest = activeTabId ? tabData[activeTabId] : null;
@@ -98,12 +151,16 @@ export default function App() {
   return (
     <div className="w-full h-full flex overflow-hidden">
       <Sidebar
-        requests={requestList}
+        collections={collections}
         activeId={activeTabId}
         openIds={openTabIds}
-        onSelect={handleOpenRequest}
+        onSelectRequest={handleOpenRequest}
         onNewRequest={handleNewRequest}
-        onRename={handleRename}
+        onNewCollection={handleNewCollection}
+        onRenameRequest={handleRenameRequest}
+        onRenameCollection={handleRenameCollection}
+        onDeleteCollection={handleDeleteCollection}
+        onMoveRequest={handleMoveRequest}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TabBar
@@ -115,7 +172,7 @@ export default function App() {
           activeId={activeTabId}
           onSelect={setActiveTabId}
           onClose={handleCloseTab}
-          onRename={handleRename}
+          onRename={handleRenameRequest}
         />
         {activeRequest ? (
           <RequestView

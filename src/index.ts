@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { fetchToken, handleHttpRequest } from './requestHandler';
 import { Request } from './models/Request';
 import { ClientCredentialsAuthentication } from './models/Authentication';
+import { CollectionNode } from './models/Collection';
 import { promises as fs } from 'fs';
 import path from 'path';
 
@@ -13,36 +14,66 @@ if (require('electron-squirrel-startup')) {
   app.quit();
 }
 
-function getRequestsDir() {
-  return path.join(app.getPath('userData'), 'requests');
+function getCollectionsDir() {
+  return path.join(app.getPath('userData'), 'collections');
 }
 
-ipcMain.handle('list-requests', async () => {
-  const dir = getRequestsDir();
+async function migrateIfNeeded() {
+  const oldDir = path.join(app.getPath('userData'), 'requests');
+  try {
+    await fs.access(oldDir);
+  } catch {
+    return; // old dir doesn't exist, nothing to migrate
+  }
+  const collectionsDir = getCollectionsDir();
+  const defaultDir = path.join(collectionsDir, 'Default');
+  await fs.mkdir(defaultDir, { recursive: true });
+  const files = await fs.readdir(oldDir);
+  await Promise.all(
+    files.filter(f => f.endsWith('.json')).map(async f => {
+      const raw = await fs.readFile(path.join(oldDir, f), 'utf-8');
+      const data = JSON.parse(raw);
+      data.collectionId = 'Default';
+      await fs.writeFile(path.join(defaultDir, f), JSON.stringify(data, null, 2), 'utf-8');
+    })
+  );
+  await fs.rename(oldDir, path.join(app.getPath('userData'), 'requests.migrated'));
+}
+
+ipcMain.handle('list-collections', async () => {
+  await migrateIfNeeded();
+  const dir = getCollectionsDir();
   await fs.mkdir(dir, { recursive: true });
-  const files = await fs.readdir(dir);
-  const results = await Promise.all(
-    files
-      .filter(f => f.endsWith('.json'))
-      .map(async f => {
-        const raw = await fs.readFile(path.join(dir, f), 'utf-8');
-        const parsed = JSON.parse(raw);
-        return { id: parsed.id, name: parsed.name };
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  const collections: CollectionNode[] = await Promise.all(
+    entries
+      .filter(e => e.isDirectory())
+      .map(async e => {
+        const collectionDir = path.join(dir, e.name);
+        const files = await fs.readdir(collectionDir);
+        const requests = await Promise.all(
+          files.filter(f => f.endsWith('.json')).map(async f => {
+            const raw = await fs.readFile(path.join(collectionDir, f), 'utf-8');
+            const parsed = JSON.parse(raw);
+            return { id: parsed.id, name: parsed.name, collectionId: e.name };
+          })
+        );
+        return { id: e.name, requests };
       })
   );
-  return { success: true, data: results };
+  return { success: true, data: collections };
 });
 
 ipcMain.handle('save-request', async (_, requestData: any) => {
-  const dir = getRequestsDir();
-  await fs.mkdir(dir, { recursive: true });
-  const filePath = path.join(dir, `${requestData.id}.json`);
+  const collectionDir = path.join(getCollectionsDir(), requestData.collectionId);
+  await fs.mkdir(collectionDir, { recursive: true });
+  const filePath = path.join(collectionDir, `${requestData.id}.json`);
   await fs.writeFile(filePath, JSON.stringify(requestData, null, 2), 'utf-8');
   return { success: true };
 });
 
-ipcMain.handle('load-request', async (_, id: string) => {
-  const filePath = path.join(getRequestsDir(), `${id}.json`);
+ipcMain.handle('load-request', async (_, id: string, collectionId: string) => {
+  const filePath = path.join(getCollectionsDir(), collectionId, `${id}.json`);
   try {
     const raw = await fs.readFile(filePath, 'utf-8');
     return { success: true, data: JSON.parse(raw) };
@@ -52,9 +83,51 @@ ipcMain.handle('load-request', async (_, id: string) => {
   }
 });
 
-ipcMain.handle('delete-request', async (_, id: string) => {
-  const filePath = path.join(getRequestsDir(), `${id}.json`);
+ipcMain.handle('delete-request', async (_, id: string, collectionId: string) => {
+  const filePath = path.join(getCollectionsDir(), collectionId, `${id}.json`);
   await fs.unlink(filePath);
+  return { success: true };
+});
+
+ipcMain.handle('create-collection', async (_, name: string) => {
+  await fs.mkdir(path.join(getCollectionsDir(), name), { recursive: true });
+  return { success: true };
+});
+
+ipcMain.handle('rename-collection', async (_, oldName: string, newName: string) => {
+  const collectionsDir = getCollectionsDir();
+  const oldDir = path.join(collectionsDir, oldName);
+  const newDir = path.join(collectionsDir, newName);
+  await fs.rename(oldDir, newDir);
+  const files = await fs.readdir(newDir);
+  await Promise.all(
+    files.filter(f => f.endsWith('.json')).map(async f => {
+      const filePath = path.join(newDir, f);
+      const raw = await fs.readFile(filePath, 'utf-8');
+      const data = JSON.parse(raw);
+      data.collectionId = newName;
+      await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    })
+  );
+  return { success: true };
+});
+
+ipcMain.handle('delete-collection', async (_, name: string) => {
+  await fs.rm(path.join(getCollectionsDir(), name), { recursive: true, force: true });
+  return { success: true };
+});
+
+ipcMain.handle('move-request', async (_, id: string, fromCollectionId: string, toCollectionId: string) => {
+  const collectionsDir = getCollectionsDir();
+  const fromPath = path.join(collectionsDir, fromCollectionId, `${id}.json`);
+  const toDir = path.join(collectionsDir, toCollectionId);
+  const toPath = path.join(toDir, `${id}.json`);
+  const raw = await fs.readFile(fromPath, 'utf-8');
+  const data = JSON.parse(raw);
+  data.collectionId = toCollectionId;
+  await fs.mkdir(toDir, { recursive: true });
+  await fs.writeFile(toPath, JSON.stringify(data, null, 2), 'utf-8');
+  await fs.unlink(fromPath);
   return { success: true };
 });
 
