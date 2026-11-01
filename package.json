@@ -1,8 +1,8 @@
 {
   "name": "betterrest",
-  "productName": "betterrest",
+  "productName": "BettrRest",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "REST Client",
   "main": ".webpack/main",
   "scripts": {
     "start": "electron-forge start",
