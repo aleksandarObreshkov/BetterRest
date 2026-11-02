@@ -2,6 +2,12 @@ import './index.css';
 import App from './App';
 import { createRoot } from 'react-dom/client';
 import { CollectionNode } from './models/Collection';
+import { MappedRequest } from './utils/bruYamlMapper';
+
+export interface BrunoImportResult {
+  collections: { name: string; requests: MappedRequest[] }[];
+  failed: { file: string; error: string }[];
+}
 
 export interface IElectronAPI {
   executeRequest: (request: any) => any,
@@ -14,6 +20,8 @@ export interface IElectronAPI {
   renameCollection: (oldName: string, newName: string) => Promise<{ success: boolean }>,
   deleteCollection: (name: string) => Promise<{ success: boolean }>,
   moveRequest: (id: string, fromCollectionId: string, toCollectionId: string) => Promise<{ success: boolean }>,
+  importBruno: () => Promise<BrunoImportResult | null>,
+  onMenuImportBruno: (cb: () => void) => () => void,
   introspectGraphQL: (url: string) => Promise<{ success: boolean; data?: any; error?: string }>,
   pickFile: () => Promise<string | null>,
 }

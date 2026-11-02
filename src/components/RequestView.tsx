@@ -61,6 +61,18 @@ export default function RequestView({
           requestBody = JSON.stringify({ query: extracted, ...(variables ? { variables } : {}) });
           requestHeaders.set("Content-Type", "application/json");
         }
+      } else if (bodyType === 'form-urlencoded' && body) {
+        try {
+          const fields = JSON.parse(body) as { id: number; key: string; value: string; enabled: boolean }[];
+          const params = new URLSearchParams();
+          for (const field of fields) {
+            if (field.enabled && field.key.trim()) {
+              params.append(field.key, field.value);
+            }
+          }
+          requestBody = params.toString();
+          requestHeaders.set('Content-Type', 'application/x-www-form-urlencoded');
+        } catch { /* keep requestBody as-is */ }
       }
 
       const request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody);

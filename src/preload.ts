@@ -12,6 +12,11 @@ contextBridge.exposeInMainWorld('api', {
   renameCollection: (oldName: string, newName: string) => ipcRenderer.invoke('rename-collection', oldName, newName),
   deleteCollection: (name: string) => ipcRenderer.invoke('delete-collection', name),
   moveRequest: (id: string, fromCollectionId: string, toCollectionId: string) => ipcRenderer.invoke('move-request', id, fromCollectionId, toCollectionId),
+  importBruno: () => ipcRenderer.invoke('import-bruno-collection'),
+  onMenuImportBruno: (cb: () => void) => {
+    ipcRenderer.on('menu-import-bruno', cb);
+    return () => ipcRenderer.removeListener('menu-import-bruno', cb);
+  },
 
   introspectGraphQL: (url: string) => ipcRenderer.invoke('graphql-introspect', url),
   pickFile: () => ipcRenderer.invoke('pick-file'),

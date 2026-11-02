@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { BodyConfigProperties } from './RequestConfigView';
-import { ChevronDown, Database, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, Database, Loader2, AlertCircle, CheckCircle2, Plus, X } from 'lucide-react';
 import { parseGraphQLOperations, GraphQLOperation } from '../../utils/graphqlParser';
 import { useGraphQLSchema } from '../../hooks/useGraphQLSchema';
 import { Authentication } from '../../models/Authentication';
@@ -168,7 +168,23 @@ const smartEnterKeymap = keymap.of([
 // Editor theme & placeholders
 // ---------------------------------------------------------------------------
 
-export type BodyType = 'json' | 'graphql';
+export type BodyType = 'json' | 'graphql' | 'form-urlencoded';
+
+interface FormField {
+  id: number;
+  key: string;
+  value: string;
+  enabled: boolean;
+}
+
+function parseFormFields(body: string | undefined): FormField[] {
+  if (!body?.trim()) return [{ id: 0, key: '', value: '', enabled: true }];
+  try {
+    const parsed = JSON.parse(body);
+    if (Array.isArray(parsed)) return parsed as FormField[];
+  } catch {}
+  return [{ id: 0, key: '', value: '', enabled: true }];
+}
 
 const editorTheme = EditorView.theme({
   '&': {
@@ -195,7 +211,7 @@ const editorTheme = EditorView.theme({
   },
 });
 
-const placeholders: Record<BodyType, string> = {
+const placeholders: Record<'json' | 'graphql', string> = {
   json: `{
   "key": "value"
 }`,
@@ -244,7 +260,11 @@ export function BodyView({
   // Schema is in the dep array so the completion/lint extensions are re-created
   // with the live schema object once introspection completes.
   useEffect(() => {
-    if (!editorRef.current) return;
+    if (!editorRef.current || bodyType === 'form-urlencoded') {
+      viewRef.current?.destroy();
+      viewRef.current = null;
+      return;
+    }
 
     viewRef.current?.destroy();
 
@@ -257,7 +277,7 @@ export function BodyView({
       bracketMatching(),
       closeBrackets(),
       syntaxHighlighting(codeHighlightStyle),
-      cmPlaceholder(placeholders[bodyType]),
+      cmPlaceholder(placeholders[bodyType as 'json' | 'graphql']),
       EditorView.updateListener.of((update) => {
         if (update.docChanged) {
           internalChangeRef.current = true;
@@ -413,6 +433,26 @@ export function BodyView({
     return null;
   };
 
+  const formFields = parseFormFields(body);
+
+  const addFormField = () => {
+    const newId = Math.max(...formFields.map(f => f.id), -1) + 1;
+    setBody(JSON.stringify([...formFields, { id: newId, key: '', value: '', enabled: true }]));
+  };
+
+  const removeFormField = (id: number) => {
+    const updated = formFields.filter(f => f.id !== id);
+    setBody(JSON.stringify(updated.length > 0 ? updated : [{ id: 0, key: '', value: '', enabled: true }]));
+  };
+
+  const updateFormField = (id: number, field: 'key' | 'value', value: string) => {
+    setBody(JSON.stringify(formFields.map(f => f.id === id ? { ...f, [field]: value } : f)));
+  };
+
+  const toggleFormField = (id: number) => {
+    setBody(JSON.stringify(formFields.map(f => f.id === id ? { ...f, enabled: !f.enabled } : f)));
+  };
+
   return (
     <div className="flex flex-col h-full w-full">
 
@@ -427,11 +467,15 @@ export function BodyView({
           <div className="relative">
             <select
               value={bodyType}
-              onChange={(e) => setBodyType(e.target.value as BodyType)}
+              onChange={(e) => {
+                setBodyType(e.target.value as BodyType);
+                setBody('');
+              }}
               className="appearance-none pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-700 cursor-pointer"
             >
               <option value="json">JSON</option>
               <option value="graphql">GraphQL</option>
+              <option value="form-urlencoded">Form URL Encoded</option>
             </select>
             <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
           </div>
@@ -491,13 +535,74 @@ export function BodyView({
 
       </div>
 
-      {/* Code Editor — fills remaining space */}
-      <div className="flex-1 min-h-0 px-4 pb-2">
-        <div
-          ref={editorRef}
-          className="h-full border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
-        />
-      </div>
+      {/* Code Editor — JSON and GraphQL only */}
+      {bodyType !== 'form-urlencoded' && (
+        <div className="flex-1 min-h-0 px-4 pb-2">
+          <div
+            ref={editorRef}
+            className="h-full border border-gray-300 rounded bg-gray-50 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden"
+          />
+        </div>
+      )}
+
+      {/* Form fields editor — form-urlencoded only */}
+      {bodyType === 'form-urlencoded' && (
+        <div className="flex-1 min-h-0 px-4 pb-2 overflow-auto">
+          <div className="space-y-2 pt-1">
+            <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <div className="col-span-1" />
+              <div className="col-span-5">Key</div>
+              <div className="col-span-5">Value</div>
+              <div className="col-span-1" />
+            </div>
+            {formFields.map((field) => (
+              <div key={field.id} className="grid grid-cols-12 gap-2 items-center">
+                <div className="col-span-1 flex justify-center">
+                  <input
+                    type="checkbox"
+                    checked={field.enabled}
+                    onChange={() => toggleFormField(field.id)}
+                    className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="col-span-5">
+                  <input
+                    type="text"
+                    value={field.key}
+                    onChange={(e) => updateFormField(field.id, 'key', e.target.value)}
+                    placeholder="Key"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="col-span-5">
+                  <input
+                    type="text"
+                    value={field.value}
+                    onChange={(e) => updateFormField(field.id, 'value', e.target.value)}
+                    placeholder="Value"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="col-span-1 flex justify-center">
+                  <button
+                    onClick={() => removeFormField(field.id)}
+                    className="p-1 rounded hover:bg-gray-100 transition-colors"
+                  >
+                    <X className="w-4 h-4 text-gray-500" />
+                  </button>
+                </div>
+              </div>
+            ))}
+            <button
+              onClick={addFormField}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add Field
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Variables Editor — pinned at bottom, GraphQL only */}
       {bodyType === 'graphql' && (

@@ -28,6 +28,7 @@
     "@electron-forge/plugin-fuses": "^7.10.2",
     "@electron-forge/plugin-webpack": "^7.10.2",
     "@electron/fuses": "^1.8.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
@@ -67,6 +68,7 @@
     "graphql": "^16.13.1",
     "graphql-language-service": "^5.5.0",
     "graphql-tag": "^2.12.6",
+    "js-yaml": "^5.5.0",
     "lucide-react": "^0.561.0"
   }
 }

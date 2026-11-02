@@ -2,9 +2,25 @@ import { useEffect, useState, useCallback } from 'react';
 import RequestView from './components/RequestView';
 import Sidebar from './components/Sidebar';
 import TabBar from './components/TabBar';
+import ImportModal from './components/ImportModal';
 import { SavedRequest, blankRequest } from './models/SavedRequest';
 import { CollectionNode } from './models/Collection';
+import { MappedRequest } from './utils/bruYamlMapper';
 import { authFromJSON } from './models/Authentication';
+
+interface ImportPending {
+  collections: { name: string; resolvedName: string; requests: MappedRequest[] }[];
+  failed: { file: string; error: string }[];
+}
+
+function resolveCollectionName(base: string, existingIds: string[]): string {
+  if (!existingIds.includes(base)) return base;
+  const withSuffix = `${base}-Bruno`;
+  if (!existingIds.includes(withSuffix)) return withSuffix;
+  let i = 1;
+  while (existingIds.includes(`${withSuffix}-${i}`)) i++;
+  return `${withSuffix}-${i}`;
+}
 
 export default function App() {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
@@ -12,6 +28,7 @@ export default function App() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [tabData, setTabData] = useState<Record<string, SavedRequest>>({});
   const [savedData, setSavedData] = useState<Record<string, SavedRequest>>({});
+  const [importPending, setImportPending] = useState<ImportPending | null>(null);
 
   const isDirty = (id: string) =>
     JSON.stringify(tabData[id]) !== JSON.stringify(savedData[id]);
@@ -117,6 +134,55 @@ export default function App() {
     setSavedData(prev => prev[id] ? { ...prev, [id]: { ...prev[id], collectionId: toCollectionId } } : prev);
   }, []);
 
+  const handleStartImport = useCallback(async () => {
+    const result = await window.api.importBruno();
+    if (!result) return;
+    const existingIds = collections.map(c => c.id);
+    const used: string[] = [];
+    const resolvedCollections = result.collections.map(c => {
+      const resolvedName = resolveCollectionName(c.name, [...existingIds, ...used]);
+      used.push(resolvedName);
+      return { ...c, resolvedName };
+    });
+    setImportPending({ collections: resolvedCollections, failed: result.failed });
+  }, [collections]);
+
+  const handleConfirmImport = useCallback(async () => {
+    if (!importPending) return;
+    const newCollectionNodes: CollectionNode[] = [];
+    for (const col of importPending.collections) {
+      await window.api.createCollection(col.resolvedName);
+      const summaries = await Promise.all(
+        col.requests.map(async mapped => {
+          const id = crypto.randomUUID();
+          const headers = mapped.headers.map((h, idx) => ({ ...h, id: idx }));
+          const req: SavedRequest = {
+            id,
+            collectionId: col.resolvedName,
+            name: mapped.name,
+            url: mapped.url,
+            method: mapped.method,
+            headers,
+            auth: null,
+            body: mapped.body,
+            bodyType: mapped.bodyType,
+            selectedGraphQLOperation: null,
+            graphqlVariables: undefined,
+          };
+          await window.api.saveRequest(req);
+          return { id, name: req.name, collectionId: col.resolvedName };
+        })
+      );
+      newCollectionNodes.push({ id: col.resolvedName, requests: summaries });
+    }
+    setCollections(prev => [...prev, ...newCollectionNodes]);
+    setImportPending(null);
+  }, [importPending]);
+
+  useEffect(() => {
+    return window.api.onMenuImportBruno(handleStartImport);
+  }, [handleStartImport]);
+
   const handleCloseTab = useCallback((id: string) => {
     if (isDirty(id)) {
       const ok = window.confirm('You have unsaved changes. Close anyway?');
@@ -150,6 +216,14 @@ export default function App() {
 
   return (
     <div className="w-full h-full flex overflow-hidden">
+      {importPending && (
+        <ImportModal
+          collections={importPending.collections}
+          failed={importPending.failed}
+          onConfirm={handleConfirmImport}
+          onCancel={() => setImportPending(null)}
+        />
+      )}
       <Sidebar
         collections={collections}
         activeId={activeTabId}

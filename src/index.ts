@@ -1,10 +1,13 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, Menu } from 'electron';
 import { fetchToken, handleHttpRequest } from './requestHandler';
 import { Request } from './models/Request';
 import { ClientCredentialsAuthentication } from './models/Authentication';
 import { CollectionNode } from './models/Collection';
+import { BrunoRequest, BrunoCollection } from './models/BrunoYaml';
+import { mapBrunoRequest, MappedRequest } from './utils/bruYamlMapper';
 import { promises as fs } from 'fs';
 import path from 'path';
+import * as yaml from 'js-yaml';
 
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
@@ -13,6 +16,8 @@ declare const MAIN_WINDOW_PRELOAD_WEBPACK_ENTRY: string;
 if (require('electron-squirrel-startup')) {
   app.quit();
 }
+
+let mainWindow: BrowserWindow | null = null;
 
 function getCollectionsDir() {
   return path.join(app.getPath('userData'), 'collections');
@@ -37,7 +42,11 @@ async function migrateIfNeeded() {
       await fs.writeFile(path.join(defaultDir, f), JSON.stringify(data, null, 2), 'utf-8');
     })
   );
-  await fs.rename(oldDir, path.join(app.getPath('userData'), 'requests.migrated'));
+  try {
+    await fs.rename(oldDir, path.join(app.getPath('userData'), 'requests.migrated'));
+  } catch {
+    await fs.rm(oldDir, { recursive: true, force: true });
+  }
 }
 
 ipcMain.handle('list-collections', async () => {
@@ -146,9 +155,63 @@ ipcMain.handle('pick-file', async () => {
   return result.canceled ? null : result.filePaths[0]
 })
 
+ipcMain.handle('import-bruno-collection', async () => {
+  const result = await dialog.showOpenDialog({ properties: ['openDirectory'] });
+  if (result.canceled || result.filePaths.length === 0) return null;
+
+  const dirPath = result.filePaths[0];
+
+  // Try to get the collection name from opencollection.yml; fall back to directory name
+  let collectionName = path.basename(dirPath);
+  try {
+    const raw = await fs.readFile(path.join(dirPath, 'opencollection.yml'), 'utf-8');
+    const meta = yaml.load(raw) as BrunoCollection;
+    if (meta?.info?.name) collectionName = meta.info.name;
+  } catch { /* file absent or unreadable — use directory name */ }
+
+  async function findYmlFiles(dir: string): Promise<string[]> {
+    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const files: string[] = [];
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory() && entry.name !== 'environments') {
+        files.push(...await findYmlFiles(fullPath));
+      } else if (entry.isFile() && entry.name.endsWith('.yml')) {
+        files.push(fullPath);
+      }
+    }
+    return files;
+  }
+
+  const ymlFiles = await findYmlFiles(dirPath);
+
+  const collectionMap = new Map<string, MappedRequest[]>();
+  const failed: { file: string; error: string }[] = [];
+
+  for (const filePath of ymlFiles) {
+    const relPath = path.relative(dirPath, filePath);
+    const parts = relPath.split(path.sep);
+    const collectionKey = parts.length === 1 ? collectionName : parts[0];
+
+    const raw = await fs.readFile(filePath, 'utf-8');
+    try {
+      const parsed = yaml.load(raw) as BrunoRequest;
+      const mapped = mapBrunoRequest(parsed);
+      if (mapped) {
+        if (!collectionMap.has(collectionKey)) collectionMap.set(collectionKey, []);
+        collectionMap.get(collectionKey)!.push(mapped);
+      }
+    } catch (err) {
+      failed.push({ file: relPath, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  const collections = Array.from(collectionMap.entries()).map(([name, requests]) => ({ name, requests }));
+  return { collections, failed };
+});
+
 const createWindow = (): void => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     height: 600,
     width: 800,
     webPreferences: {
@@ -156,11 +219,7 @@ const createWindow = (): void => {
     },
   });
 
-  // and load the index.html of the app.
   mainWindow.loadURL(MAIN_WINDOW_WEBPACK_ENTRY);
-
-  // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished
@@ -168,6 +227,24 @@ const createWindow = (): void => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
   createWindow();
+  const menu = Menu.buildFromTemplate([
+    { role: 'appMenu' },
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Import from Bruno Collection…',
+          click: () => mainWindow?.webContents.send('menu-import-bruno'),
+        },
+        { type: 'separator' },
+        { role: 'quit' },
+      ],
+    },
+    { role: 'editMenu' },
+    { role: 'viewMenu' },
+    { role: 'windowMenu' },
+  ]);
+  Menu.setApplicationMenu(menu);
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
