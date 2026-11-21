@@ -118,6 +118,29 @@ export default function App() {
     setCollections(prev => prev.filter(c => c.id !== name));
   }, []);
 
+  const handleDeleteRequest = useCallback(async (id: string, collectionId: string) => {
+    try {
+      const result = await window.api.deleteRequest(id, collectionId);
+      if (!result.success) {
+        window.alert('Could not delete the request. Please try again.');
+        return;
+      }
+    } catch {
+      window.alert('Could not delete the request. Please try again.');
+      return;
+    }
+
+    setCollections(prev => prev.map(c =>
+      c.id === collectionId ? { ...c, requests: c.requests.filter(r => r.id !== id) } : c
+    ));
+    const remainingTabIds = openTabIds.filter(t => t !== id);
+    const index = openTabIds.indexOf(id);
+    setActiveTabId(prev => prev === id ? remainingTabIds[Math.max(0, index - 1)] ?? null : prev);
+    setOpenTabIds(prev => prev.filter(t => t !== id));
+    setTabData(prev => { const next = { ...prev }; delete next[id]; return next; });
+    setSavedData(prev => { const next = { ...prev }; delete next[id]; return next; });
+  }, [openTabIds]);
+
   const handleMoveRequest = useCallback(async (id: string, fromCollectionId: string, toCollectionId: string) => {
     await window.api.moveRequest(id, fromCollectionId, toCollectionId);
     setCollections(prev => {
@@ -234,6 +257,7 @@ export default function App() {
         onRenameRequest={handleRenameRequest}
         onRenameCollection={handleRenameCollection}
         onDeleteCollection={handleDeleteCollection}
+        onDeleteRequest={handleDeleteRequest}
         onMoveRequest={handleMoveRequest}
       />
       <div className="flex-1 flex flex-col overflow-hidden">

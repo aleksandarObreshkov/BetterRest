@@ -12,6 +12,7 @@ interface SidebarProps {
   onRenameRequest: (id: string, name: string) => void;
   onRenameCollection: (oldName: string, newName: string) => void;
   onDeleteCollection: (name: string) => void;
+  onDeleteRequest: (id: string, collectionId: string) => void;
   onMoveRequest: (id: string, fromCollectionId: string, toCollectionId: string) => void;
 }
 
@@ -25,6 +26,7 @@ export default function Sidebar({
   onRenameRequest,
   onRenameCollection,
   onDeleteCollection,
+  onDeleteRequest,
   onMoveRequest,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -105,6 +107,12 @@ export default function Sidebar({
   function handleDeleteCollection(name: string) {
     if (window.confirm(`Delete collection "${name}" and all its requests?`)) {
       onDeleteCollection(name);
+    }
+  }
+
+  function handleDeleteRequest(id: string, collectionId: string, name: string) {
+    if (window.confirm(`Delete request "${name}"? Any unsaved changes will be lost.`)) {
+      onDeleteRequest(id, collectionId);
     }
   }
 
@@ -249,7 +257,7 @@ export default function Sidebar({
                       e.dataTransfer.effectAllowed = 'move';
                     }}
                     onDragEnd={() => setDragOverCollectionId(null)}
-                    className={`flex items-center pl-7 pr-2 py-1.5 text-sm transition-colors cursor-grab active:cursor-grabbing ${
+                    className={`group flex items-center pl-7 pr-2 py-1.5 text-sm transition-colors cursor-grab active:cursor-grabbing ${
                       r.id === activeId
                         ? 'bg-blue-50 text-blue-700 font-medium'
                         : 'text-gray-600 hover:bg-gray-100'
@@ -266,18 +274,26 @@ export default function Sidebar({
                           if (e.key === 'Escape') setEditingRequestId(null);
                           e.stopPropagation();
                         }}
-                        className="flex-1 text-sm border-b border-blue-500 bg-transparent focus:outline-none"
+                        className="flex-1 min-w-0 text-sm border-b border-blue-500 bg-transparent focus:outline-none"
                       />
                     ) : (
                       <button
                         onClick={() => onSelectRequest(r.id, r.collectionId)}
                         onDoubleClick={() => startRenameRequest(r.id, r.name)}
-                        className="flex-1 text-left truncate"
+                        className="flex-1 min-w-0 text-left truncate"
                         title="Double-click to rename"
                       >
                         {r.name}
                       </button>
                     )}
+                    <button
+                      onClick={() => handleDeleteRequest(r.id, r.collectionId, r.name)}
+                      className="flex-shrink-0 ml-1 p-0.5 text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+                      title="Delete request"
+                      aria-label={`Delete request "${r.name}"`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
