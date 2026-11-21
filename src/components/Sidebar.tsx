@@ -29,7 +29,7 @@ export default function Sidebar({
   onDeleteRequest,
   onMoveRequest,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [dragOverCollectionId, setDragOverCollectionId] = useState<string | null>(null);
   const [newRequestPickerOpen, setNewRequestPickerOpen] = useState(false);
   const [addingCollection, setAddingCollection] = useState(false);
@@ -62,7 +62,7 @@ export default function Sidebar({
   }, [newRequestPickerOpen]);
 
   function toggleCollapse(id: string) {
-    setCollapsed(prev => {
+    setExpanded(prev => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -192,7 +192,7 @@ export default function Sidebar({
           </p>
         ) : (
           collections.map(collection => {
-            const isOpen = !collapsed.has(collection.id);
+            const isOpen = expanded.has(collection.id);
             return (
               <div
                 key={collection.id}
