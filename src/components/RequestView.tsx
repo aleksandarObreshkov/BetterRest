@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import RequestMethodPicker from './RequestMethodPicker';
 import UrlInput from './UrlInput';
 import { RequestButton } from './RequestButton';
@@ -43,9 +43,38 @@ export default function RequestView({
   const [responseHeaders, setResponseHeaders] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [splitPercent, setSplitPercent] = useState(50);
+  const [elapsedMs, setElapsedMs] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const executionRef = useRef<{ id: string; startedAt: number; cancelled: boolean } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => {
+    if (timerRef.current !== null) clearInterval(timerRef.current);
+    if (executionRef.current) {
+      void window.api.cancelRequest(executionRef.current.id).catch(() => { /* view is closing */ });
+      executionRef.current = null;
+    }
+  }, []);
+
+  const handleCancel = async () => {
+    const execution = executionRef.current;
+    if (!execution || execution.cancelled) return;
+    execution.cancelled = true;
+    try {
+      await window.api.cancelRequest(execution.id);
+    } catch (error) {
+      if (executionRef.current !== execution) return;
+      execution.cancelled = false;
+      window.alert('Could not cancel the request: ' + error.message);
+    }
+  };
 
   const handleSubmit = async () => {
+    if (executionRef.current) return;
+    const execution = { id: `${requestId}:${crypto.randomUUID()}`, startedAt: performance.now(), cancelled: false };
+    executionRef.current = execution;
+    setElapsedMs(0);
+    timerRef.current = setInterval(() => setElapsedMs(performance.now() - execution.startedAt), 100);
     setLoading(true);
     try {
       const requestHeaders = formRequestHeaders();
@@ -76,16 +105,24 @@ export default function RequestView({
       }
 
       const request = new Request(url, method as HttpMethod, requestHeaders, auth, undefined, requestBody);
-      const result = await window.api.executeRequest(request.toJSON());
-      setResponseBody(result.body);
-      setResponseContentType(result.contentType ?? '');
-      setResponseHeaders(result.headers ?? {});
+      const result = await window.api.executeRequest(request.toJSON(), execution.id);
+      if (executionRef.current !== execution) return;
+      setResponseBody(result.cancelled ? 'Request cancelled.' : result.body);
+      setResponseContentType(result.cancelled ? '' : result.contentType ?? '');
+      setResponseHeaders(result.cancelled ? {} : result.headers ?? {});
     } catch (error) {
+      if (executionRef.current !== execution) return;
       setResponseBody('Error: ' + error.message);
       setResponseContentType('');
       setResponseHeaders({});
     } finally {
-      setLoading(false);
+      if (executionRef.current === execution) {
+        if (timerRef.current !== null) clearInterval(timerRef.current);
+        timerRef.current = null;
+        setElapsedMs(performance.now() - execution.startedAt);
+        executionRef.current = null;
+        setLoading(false);
+      }
     }
   };
 
@@ -129,7 +166,12 @@ export default function RequestView({
       <div className="flex-shrink-0 flex">
         <RequestMethodPicker value={method} onChange={v => onChange({ method: v })} />
         <UrlInput url={url} setUrl={v => onChange({ url: v })} loading={loading} />
-        <RequestButton loading={loading} executeRequest={handleSubmit} />
+        <RequestButton loading={loading} executeRequest={handleSubmit} cancelRequest={handleCancel} />
+        {elapsedMs !== null && (
+          <span className="self-center ml-3 text-sm text-gray-500 tabular-nums whitespace-nowrap" title="Elapsed request time" role="timer">
+            {(elapsedMs / 1000).toFixed(1)} s
+          </span>
+        )}
       </div>
       <div className="flex-1 min-h-0 flex overflow-hidden" ref={containerRef}>
         <div style={{ width: `${splitPercent}%` }} className="h-full min-w-0 overflow-hidden p-0.5">

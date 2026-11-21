@@ -8,6 +8,7 @@ import { mapBrunoRequest, MappedRequest } from './utils/bruYamlMapper';
 import { promises as fs } from 'fs';
 import path from 'path';
 import * as yaml from 'js-yaml';
+import { randomUUID } from 'crypto';
 
 
 declare const MAIN_WINDOW_WEBPACK_ENTRY: string;
@@ -140,10 +141,32 @@ ipcMain.handle('move-request', async (_, id: string, fromCollectionId: string, t
   return { success: true };
 });
 
-ipcMain.handle("request", async (_, requestJson: any) => {
-  const request = Request.fromJSON(requestJson)
-  return await handleHttpRequest(request)
-})
+const runningRequests = new Map<string, AbortController>();
+
+ipcMain.handle("request", async (event, requestJson: any, executionId: string = randomUUID()) => {
+  const key = `${event.sender.id}:${executionId}`;
+  if (runningRequests.has(key)) throw new Error('Request is already running.');
+  const controller = new AbortController();
+  runningRequests.set(key, controller);
+  const cancel = () => controller.abort();
+  event.sender.once('destroyed', cancel);
+  try {
+    const request = Request.fromJSON(requestJson);
+    return await handleHttpRequest(request, controller.signal);
+  } catch (error) {
+    if (controller.signal.aborted) {
+      return { cancelled: true, body: 'Request cancelled.', status: 0, contentType: '', headers: {} };
+    }
+    throw error;
+  } finally {
+    runningRequests.delete(key);
+    event.sender.removeListener('destroyed', cancel);
+  }
+});
+
+ipcMain.handle('cancel-request', (event, executionId: string) => {
+  runningRequests.get(`${event.sender.id}:${executionId}`)?.abort();
+});
 
 ipcMain.handle("authRequest", async (_, requestJson: any) => {
   const authRequest = ClientCredentialsAuthentication.fromJSON(requestJson)

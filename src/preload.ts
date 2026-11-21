@@ -1,7 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 contextBridge.exposeInMainWorld('api', {
-  executeRequest: async (request: any) => ipcRenderer.invoke("request", request),
+  executeRequest: async (request: any, executionId?: string) => ipcRenderer.invoke("request", request, executionId),
+  cancelRequest: (executionId: string) => ipcRenderer.invoke('cancel-request', executionId),
   fetchToken: async (authRequest: any) => ipcRenderer.invoke("authRequest", authRequest),
 
   listCollections: () => ipcRenderer.invoke('list-collections'),

@@ -2,18 +2,17 @@ import styles from "./RequestButton.module.css";
 interface ButtonParams {
     loading: boolean
     executeRequest: () => void
+    cancelRequest: () => void
 }
 
-export function RequestButton({loading, executeRequest}: ButtonParams) {
+export function RequestButton({loading, executeRequest, cancelRequest}: ButtonParams) {
     return (
         <button 
-          onClick={executeRequest}
-          disabled={loading}
+          onClick={loading ? cancelRequest : executeRequest}
           className={`${styles.submitButton}`}
         >
-          Submit
+          {loading ? 'Cancel' : 'Send'}
         </button>
     )
 
 }
-

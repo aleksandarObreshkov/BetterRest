@@ -3,6 +3,7 @@ import App from './App';
 import { createRoot } from 'react-dom/client';
 import { CollectionNode } from './models/Collection';
 import { MappedRequest } from './utils/bruYamlMapper';
+import { HttpResponse } from './types/HttpResponse';
 
 export interface BrunoImportResult {
   collections: { name: string; requests: MappedRequest[] }[];
@@ -10,7 +11,8 @@ export interface BrunoImportResult {
 }
 
 export interface IElectronAPI {
-  executeRequest: (request: any) => any,
+  executeRequest: (request: any, executionId?: string) => Promise<HttpResponse>,
+  cancelRequest: (executionId: string) => Promise<void>,
   fetchToken: (authRequest: any) => any,
   listCollections: () => Promise<{ success: boolean; data: CollectionNode[] }>,
   saveRequest: (data: any) => Promise<{ success: boolean }>,
